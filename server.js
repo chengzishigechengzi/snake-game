@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
+const fs = require('fs'); // Add FS for persistence
 const PF = require('pathfinding');
 
 const app = express();
@@ -29,6 +30,25 @@ let aiSnakes = []; // Array of AI objects
 let aiIdCounter = 0;
 // High Score List: {name: string, score: number}[]
 let highScores = []; 
+const HS_FILE = path.join(__dirname, 'highscores.json');
+
+// Load High Scores
+try {
+    if (fs.existsSync(HS_FILE)) {
+        highScores = JSON.parse(fs.readFileSync(HS_FILE, 'utf8'));
+    } else {
+        // Default Dummy Scores
+        highScores = [
+            { name: "神秘高手", score: 500 },
+            { name: "贪吃蛇", score: 200 },
+            { name: "萌新", score: 50 }
+        ];
+        fs.writeFileSync(HS_FILE, JSON.stringify(highScores));
+    }
+} catch (err) {
+    console.error("Failed to load high scores:", err);
+    highScores = [];
+}
 
 function updateHighScores(player) {
     if (player.score <= 0) return;
@@ -40,10 +60,6 @@ function updateHighScores(player) {
     
     if (qualified) {
         // Add current score
-        // If player already in list with LOWER score, update it?
-        // Or just treat as new entry? Usually arcades allow multiple entries from same person if better.
-        // Let's allow duplicates for now, or maybe check name?
-        // Let's filter by Name to avoid spamming the board with one person
         const existingIndex = highScores.findIndex(h => h.name === player.name);
         
         if (existingIndex !== -1) {
@@ -59,6 +75,13 @@ function updateHighScores(player) {
         highScores.sort((a, b) => b.score - a.score);
         if (highScores.length > 3) highScores = highScores.slice(0, 3);
         
+        // Save to Disk
+        try {
+            fs.writeFileSync(HS_FILE, JSON.stringify(highScores));
+        } catch (err) {
+            console.error("Failed to save high scores:", err);
+        }
+
         // Broadcast Update
         io.emit('highscore_update', highScores);
     }
