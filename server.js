@@ -777,8 +777,14 @@ io.on('connection', (socket) => {
     });
     
     socket.on('respawn', (name) => {
+        // Sanitize Name (Basic)
+        if (name) name = name.replace(/</g, "&lt;").replace(/>/g, "&gt;").substring(0, 15);
         const p = players[socket.id];
         if (p) p.respawn(name);
+    });
+    
+    socket.on('get_highscores', () => {
+        socket.emit('highscore_update', highScores);
     });
 
     socket.on('disconnect', () => {

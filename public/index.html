@@ -386,6 +386,9 @@
         socket.emit('respawn', name);
         if(audioCtx.state === 'suspended') audioCtx.resume();
     }
+    
+    // Initial fetch
+    socket.emit('get_highscores');
 
     playBtn.addEventListener('click', () => {
         lockOrientation();
@@ -590,6 +593,8 @@
             if (me.isDead && deadScreen.classList.contains('hidden') && menuScreen.classList.contains('hidden')) {
                 finalScoreVal.textContent = me.score;
                 deadScreen.classList.remove('hidden');
+                // Force fetch high scores on death screen show
+                socket.emit('get_highscores');
             }
         }
     });
