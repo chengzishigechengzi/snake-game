@@ -676,6 +676,9 @@ function initPlayer(socket) {
         // Update High Score on Death
         updateHighScores(this);
         
+        // Force sync High Scores to this player (so they see the board even if they didn't break the record)
+        socket.emit('highscore_update', highScores);
+        
         this.isDead = true;
         io.emit('play_sound', { id: this.id, type: 'die' });
         
