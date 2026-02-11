@@ -498,17 +498,10 @@
     function getInterpolatedSnake(currSnake, prevSnake, t, velocity) {
         if (!currSnake || currSnake.length === 0) return [];
         
-        // Extrapolation (Lag Compensation)
-        if (t > 1) {
-            // Limit extrapolation to avoid ghosts (Max ~200ms)
-            const et = Math.min(t - 1, 6.0);
-            if (!velocity) return currSnake;
-            
-            return currSnake.map(segment => ({
-                x: segment.x + velocity.x * et,
-                y: segment.y + velocity.y * et
-            }));
-        }
+        // Fix: Removed linear extrapolation for body segments
+        // It caused the "Drifting" issue where the tail would move sideways with head velocity.
+        // Instead, we just clamp t to 1. If lag happens, we wait (snap) rather than drift.
+        if (t > 1) t = 1;
 
         if (!prevSnake || prevSnake.length !== currSnake.length) return currSnake;
         
@@ -681,6 +674,9 @@
     boostBtn.addEventListener('mouseup', () => { socket.emit('boost', false); boostBtn.classList.remove('active'); });
 
     // --- Rendering ---
+    // Performance: Check for Mobile to disable expensive effects
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     function resizeCanvas() {
         // Detect if we are in "Forced Landscape" (Portrait Mode on Mobile)
         // In this case, CSS swaps width/height, so Canvas should match CONTAINER size
@@ -728,8 +724,7 @@
         ctx.save();
         ctx.translate(x, y - 15);
         ctx.fillStyle = '#FFD700'; // Gold
-        ctx.shadowColor = '#FFD700';
-        ctx.shadowBlur = 10;
+        // Shadow handled by caller
         
         // Simple Crown Path
         ctx.beginPath();
@@ -811,11 +806,15 @@
         // Grid & Border
         ctx.strokeStyle = '#333';
         ctx.strokeRect(0, 0, tileCountX * gridSize, tileCountY * gridSize);
-        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-        ctx.beginPath();
-        for (let x = 0; x <= tileCountX; x++) { ctx.moveTo(x*gridSize,0); ctx.lineTo(x*gridSize, tileCountY*gridSize); }
-        for (let y = 0; y <= tileCountY; y++) { ctx.moveTo(0,y*gridSize); ctx.lineTo(tileCountX*gridSize, y*gridSize); }
-        ctx.stroke();
+        
+        // Performance: Skip grid lines on mobile if needed, or keep them as they are cheap
+        if (!isMobile) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.beginPath();
+            for (let x = 0; x <= tileCountX; x++) { ctx.moveTo(x*gridSize,0); ctx.lineTo(x*gridSize, tileCountY*gridSize); }
+            for (let y = 0; y <= tileCountY; y++) { ctx.moveTo(0,y*gridSize); ctx.lineTo(tileCountX*gridSize, y*gridSize); }
+            ctx.stroke();
+        }
 
         // Food
         food.forEach(f => {
@@ -860,8 +859,10 @@
             
             // Poison Effect: Purple Glow Stroke
             if (p.poisoned > 0) {
-                ctx.shadowColor = '#aa00ff';
-                ctx.shadowBlur = 10;
+                if (!isMobile) {
+                    ctx.shadowColor = '#aa00ff';
+                    ctx.shadowBlur = 10;
+                }
                 ctx.strokeStyle = '#aa00ff';
                 ctx.lineWidth = 2;
             } else {
@@ -916,7 +917,15 @@
             const p = renderPlayers[topPlayerId];
             const head = p.snake[0];
             // Directly on head
+            // Performance: Only shadow on Desktop
+            if (!isMobile) {
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 10;
+            } else {
+                ctx.shadowBlur = 0;
+            }
             drawCrown(head.x * gridSize + gridSize/2, head.y * gridSize);
+            ctx.shadowBlur = 0; // Reset
         }
         
         // AI Snakes
