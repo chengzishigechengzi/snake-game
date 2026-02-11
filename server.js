@@ -35,19 +35,32 @@ const HS_FILE = path.join(__dirname, 'highscores.json');
 // Load High Scores
 try {
     if (fs.existsSync(HS_FILE)) {
-        highScores = JSON.parse(fs.readFileSync(HS_FILE, 'utf8'));
-    } else {
-        // Default Dummy Scores
-        highScores = [
-            { name: "神秘高手", score: 500 },
-            { name: "贪吃蛇", score: 200 },
-            { name: "萌新", score: 50 }
-        ];
-        fs.writeFileSync(HS_FILE, JSON.stringify(highScores));
+        try {
+            const data = fs.readFileSync(HS_FILE, 'utf8');
+            if (data.trim().length > 0) {
+                highScores = JSON.parse(data);
+            }
+        } catch(e) {
+            console.error("Parse error", e);
+            highScores = [];
+        }
     }
 } catch (err) {
     console.error("Failed to load high scores:", err);
     highScores = [];
+}
+
+// Ensure defaults if empty (whether file missing, empty, or corrupt)
+if (!highScores || highScores.length === 0) {
+    highScores = [
+        { name: "神秘高手", score: 500 },
+        { name: "贪吃蛇", score: 200 },
+        { name: "萌新", score: 50 }
+    ];
+    // Try to write it back so file exists next time (if persistence allows)
+    try {
+        fs.writeFileSync(HS_FILE, JSON.stringify(highScores));
+    } catch(e) {}
 }
 
 function updateHighScores(player) {
