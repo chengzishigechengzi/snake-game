@@ -358,6 +358,7 @@
                 return segment;
             }
             
+            // Smooth lerp
             return {
                 x: lerp(prevSeg.x, segment.x, t),
                 y: lerp(prevSeg.y, segment.y, t)
@@ -366,7 +367,10 @@
     }
 
     // --- Socket Events ---
-    socket.on('connect', () => { myId = socket.id; });
+    socket.on('connect', () => { 
+        myId = socket.id; 
+        console.log('Connected, ID:', myId);
+    });
 
     socket.on('init', (data) => {
         gridSize = data.gridSize;
@@ -391,6 +395,9 @@
         
         const me = players[myId];
         if (me) {
+            // Server reconciliation: Sync client lastInput with server velocity if needed
+            // But usually we trust our local input stream more for responsiveness
+            
             scoreVal.textContent = me.score;
             aiCountVal.textContent = aiSnakes.length;
 
@@ -415,10 +422,31 @@
 
     // --- Input ---
     let lastInput = {x:0,y:0};
+    
+    // Client-side prediction state
+    let predictedSnake = [];
+    let pendingInputs = [];
+    let inputSequenceNumber = 0;
+
     function sendInput(x, y) {
         if(x===lastInput.x && y===lastInput.y) return;
-        lastInput = {x,y};
-        socket.emit('input', {x,y});
+        
+        // Immediate client-side update (Prediction)
+        const me = players[myId];
+        if (me && !me.isDead) {
+            // Validate move (no 180 turn)
+            // Need current velocity to check validation
+            // This is a simplified check, server has final say
+            if ((x === 1 && lastInput.x === -1) ||
+                (x === -1 && lastInput.x === 1) ||
+                (y === 1 && lastInput.y === -1) ||
+                (y === -1 && lastInput.y === 1)) return;
+
+            lastInput = {x,y};
+            
+            // Send to server
+            socket.emit('input', {x, y, seq: inputSequenceNumber++});
+        }
     }
 
     window.addEventListener('keydown', (e) => {
