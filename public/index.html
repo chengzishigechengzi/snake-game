@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>多人实时贪吃蛇大作战 - 增强版</title>
+    <style>
+        :root {
+            --primary: #00ff88;
+            --secondary: #00ccff;
+            --accent: #ff0055;
+            --bg: #0a0a10;
+            --panel: rgba(10, 10, 20, 0.85);
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none; 
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+
+        input {
+            touch-action: auto;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        
+        button {
+            touch-action: manipulation;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
+        }
+
+        canvas {
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* UI */
+        .hud-panel {
+            position: absolute;
+            padding: 10px;
+            background: var(--panel);
+            border-radius: 10px;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+
+        #leaderboard { top: 10px; right: 10px; width: 200px; }
+        #leaderboard h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--secondary); text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        #leaderboard-list { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+        .lb-item { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .lb-name { opacity: 0.8; }
+        .lb-score { font-weight: bold; color: var(--primary); }
+        .lb-me .lb-name { color: var(--primary); font-weight: bold; }
+        .lb-king::before { content: '👑 '; }
+
+        #stats { top: 10px; left: 10px; }
+        
+        #kill-feed {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            width: 250px;
+            text-align: right;
+            pointer-events: none;
+        }
+        .kill-msg {
+            font-size: 12px;
+            margin-bottom: 5px;
+            opacity: 0;
+            animation: fadeinout 4s forwards;
+            color: #ddd;
+        }
+        .kill-msg span { color: var(--accent); font-weight: bold; }
+        @keyframes fadeinout {
+            0% { opacity: 0; transform: translateX(20px); }
+            10% { opacity: 1; transform: translateX(0); }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* Controls */
+        #joystick-zone { position: absolute; bottom: 50px; left: 50px; width: 150px; height: 150px; z-index: 10; }
+        #boost-btn { position: absolute; bottom: 60px; right: 60px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 14px; color: white; z-index: 10; transition: all 0.1s; }
+        #boost-btn:active, #boost-btn.active { background: var(--accent); border-color: var(--accent); transform: scale(0.95); box-shadow: 0 0 20px var(--accent); }
+
+        /* Screens */
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        .hidden { display: none !important; }
+        h1 { font-size: 40px; color: var(--primary); text-shadow: 0 0 20px var(--primary); margin-bottom: 20px; }
+        .btn { background: linear-gradient(45deg, var(--primary), var(--secondary)); border: none; padding: 15px 40px; border-radius: 30px; color: #000; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4); transition: transform 0.2s; }
+        .btn:active { transform: scale(0.95); }
+
+        /* Notification */
+        #notification {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 90;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            #leaderboard { width: 150px; font-size: 10px; }
+            #joystick-zone { bottom: 30px; left: 30px; width: 120px; height: 120px; }
+            #boost-btn { bottom: 40px; right: 40px; width: 70px; height: 70px; }
+            h1 { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="stats" class="hud-panel">
+        <div>得分: <span id="score-val">0</span></div>
+        <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
+    </div>
+    
+    <div id="leaderboard" class="hud-panel">
+        <h3>排行榜</h3>
+        <ul id="leaderboard-list"></ul>
+    </div>
+    
+    <div id="kill-feed"></div>
+    <div id="notification"></div>
+
+    <!-- Mobile Controls -->
+    <div id="joystick-zone"></div>
+    <div id="boost-btn">加速</div>
+
+    <!-- Start/Dead Screen -->
+    <div id="menu-screen" class="screen">
+        <h1>SNAKE.IO</h1>
+        <p style="margin-bottom: 30px; color: #aaa;">WASD / 方向键 移动 | 空格 加速</p>
+        <input type="text" id="username-input" placeholder="输入你的名字..." style="padding: 10px 20px; border-radius: 20px; border: none; margin-bottom: 20px; width: 200px; text-align: center; font-size: 16px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+        <button id="play-btn" class="btn">加入战斗</button>
+    </div>
+
+    <div id="dead-screen" class="screen hidden">
+        <h1 style="color: var(--accent)">你挂了!</h1>
+        <p style="margin-bottom: 20px;">最终得分: <span id="final-score">0</span></p>
+        <button id="respawn-btn" class="btn">复活 (-10% 长度)</button>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+<script>
+    // --- Configuration ---
+    // Allow both polling and websocket for better compatibility with tunnels
+    const socket = io({
+        transports: ['polling', 'websocket'],
+        reconnectionAttempts: 10
+    });
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // --- Game State ---
+    let myId = null;
+    
+    // Interpolation State
+    let currState = { players: {}, aiSnakes: [], food: [] };
+    let prevState = { players: {}, aiSnakes: [], food: [] };
+    let lastUpdateTime = 0;
+    const TICK_MS = 50; // Server tick rate
+    
+    // Legacy refs for convenience (point to currState mostly)
+    let players = {}; 
+    let aiSnakes = [];
+    let food = [];
+    
+    let gridSize = 20;
+    let tileCountX = 40;
+    let tileCountY = 40;
+    let topPlayerId = null;
+    let crownPos = { x: 0, y: 0, active: false };
+    
+    let camera = { x: 0, y: 0 };
+    let particles = [];
+    
+    // Audio Context
+    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // --- Elements ---
+    const menuScreen = document.getElementById('menu-screen');
+    const usernameInput = document.getElementById('username-input');
+    const deadScreen = document.getElementById('dead-screen');
+    const playBtn = document.getElementById('play-btn');
+    const respawnBtn = document.getElementById('respawn-btn');
+    const scoreVal = document.getElementById('score-val');
+    const aiCountVal = document.getElementById('ai-count');
+    const finalScoreVal = document.getElementById('final-score');
+    const lbList = document.getElementById('leaderboard-list');
+    const killFeed = document.getElementById('kill-feed');
+    const notification = document.getElementById('notification');
+    const boostBtn = document.getElementById('boost-btn');
+    
+    // --- Initialization ---
+    function startGame() {
+        const fruits = ["柚子", "苹果", "香蕉", "桃子", "柿子", "李子"];
+        let name = usernameInput.value.trim();
+        if (!name) {
+            name = fruits[Math.floor(Math.random() * fruits.length)];
+        }
+        
+        menuScreen.classList.add('hidden');
+        socket.emit('respawn', name);
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    playBtn.addEventListener('click', startGame);
+    playBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // Prevent double firing if click also fires
+        startGame();
+    });
+
+    respawnBtn.addEventListener('click', () => {
+        deadScreen.classList.add('hidden');
+        socket.emit('respawn');
+    });
+
+    // --- Audio ---
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'eat') {
+            // Very Soft Pop
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
+            gain.gain.setValueAtTime(0.05, now); // Lower volume
+            gain.gain.linearRampToValueAtTime(0, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } else if (type === 'die') {
+            // Low Thud
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'boost') {
+            // Soft Breath
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.linearRampToValueAtTime(150, now + 0.2);
+            gain.gain.setValueAtTime(0.03, now); // Very quiet
+            gain.gain.linearRampToValueAtTime(0, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        } else if (type === 'kill_ai') {
+            // Soft Victory
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(330, now); // E
+            osc.frequency.setValueAtTime(415, now + 0.1); // G#
+            osc.frequency.setValueAtTime(494, now + 0.2); // B
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.setValueAtTime(0, now + 0.6);
+            osc.start(now);
+            osc.stop(now + 0.6);
+            
+            showNotification("恭喜成为灭魔勇士！\n长度+30% | 3秒无敌吸附");
+        } else if (type === 'eat_big') {
+            // Deeper, heavier pop
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        } else if (type === 'poison') {
+            // Sickly wobbly sound
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.linearRampToValueAtTime(80, now + 0.3);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.3);
+            
+            // Add LFO for wobble? Simple ramp is fine for now.
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+    }
+
+    function showNotification(text) {
+        notification.innerText = text;
+        notification.style.opacity = 1;
+        setTimeout(() => { notification.style.opacity = 0; }, 4000);
+    }
+
+    function addKillFeed(killer, victim) {
+        const el = document.createElement('div');
+        el.className = 'kill-msg';
+        el.innerHTML = `<span>${killer}</span> 击杀了 ${victim}`;
+        killFeed.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+    }
+
+    // --- Interpolation Helper ---
+    function lerp(start, end, t) {
+        return start + (end - start) * t;
+    }
+
+    function getInterpolatedSnake(currSnake, prevSnake, t) {
+        if (!prevSnake || prevSnake.length !== currSnake.length) return currSnake;
+        
+        return currSnake.map((segment, i) => {
+            const prevSeg = prevSnake[i];
+            if (!prevSeg) return segment;
+            
+            // If distance is large (wrap or respawn), don't interpolate
+            if (Math.abs(segment.x - prevSeg.x) > 1 || Math.abs(segment.y - prevSeg.y) > 1) {
+                return segment;
+            }
+            
+            return {
+                x: lerp(prevSeg.x, segment.x, t),
+                y: lerp(prevSeg.y, segment.y, t)
+            };
+        });
+    }
+
+    // --- Socket Events ---
+    socket.on('connect', () => { myId = socket.id; });
+
+    socket.on('init', (data) => {
+        gridSize = data.gridSize;
+        tileCountX = data.tileCountX;
+        tileCountY = data.tileCountY;
+        resizeCanvas();
+    });
+
+    socket.on('state', (state) => {
+        // Shift state
+        prevState = currState;
+        currState = state;
+        lastUpdateTime = Date.now();
+        
+        // Update refs for UI/Logic that doesn't need interpolation
+        players = currState.players;
+        food = currState.food;
+        aiSnakes = currState.aiSnakes;
+        topPlayerId = currState.topPlayerId;
+        
+        updateLeaderboard();
+        
+        const me = players[myId];
+        if (me) {
+            scoreVal.textContent = me.score;
+            aiCountVal.textContent = aiSnakes.length;
+
+            if (me.isDead && deadScreen.classList.contains('hidden') && menuScreen.classList.contains('hidden')) {
+                finalScoreVal.textContent = me.score;
+                deadScreen.classList.remove('hidden');
+            }
+        }
+    });
+    
+    socket.on('play_sound', (data) => {
+        // Play sound if it's me or near me (simple: always play for now, volume low)
+        // Or only play if id matches me
+        if (data.id === myId || data.type === 'die') {
+            playSound(data.type);
+        }
+    });
+    
+    socket.on('kill_event', (data) => {
+        addKillFeed(data.killer, data.victim);
+    });
+
+    // --- Input ---
+    let lastInput = {x:0,y:0};
+    function sendInput(x, y) {
+        if(x===lastInput.x && y===lastInput.y) return;
+        lastInput = {x,y};
+        socket.emit('input', {x,y});
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if(menuScreen.classList.contains('hidden')) {
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': sendInput(0,-1); break;
+                case 's': case 'arrowdown': sendInput(0,1); break;
+                case 'a': case 'arrowleft': sendInput(-1,0); break;
+                case 'd': case 'arrowright': sendInput(1,0); break;
+                case ' ': socket.emit('boost', true); boostBtn.classList.add('active'); break;
+            }
+        }
+    });
+    window.addEventListener('keyup', (e) => {
+        if (e.key === ' ') { socket.emit('boost', false); boostBtn.classList.remove('active'); }
+    });
+    
+    // Joystick
+    const manager = nipplejs.create({
+        zone: document.getElementById('joystick-zone'),
+        mode: 'static',
+        position: { left: '50%', top: '50%' },
+        color: 'white',
+        size: 100
+    });
+    manager.on('move', (evt, data) => {
+        const angle = data.angle.degree;
+        let x = 0, y = 0;
+        if (angle >= 45 && angle < 135) { x = 0; y = -1; }
+        else if (angle >= 135 && angle < 225) { x = -1; y = 0; }
+        else if (angle >= 225 && angle < 315) { x = 0; y = 1; }
+        else { x = 1; y = 0; }
+        sendInput(x, y);
+    });
+    
+    // Boost Button
+    boostBtn.addEventListener('touchstart', (e) => { e.preventDefault(); socket.emit('boost', true); boostBtn.classList.add('active'); });
+    boostBtn.addEventListener('touchend', (e) => { e.preventDefault(); socket.emit('boost', false); boostBtn.classList.remove('active'); });
+    boostBtn.addEventListener('mousedown', () => { socket.emit('boost', true); boostBtn.classList.add('active'); });
+    boostBtn.addEventListener('mouseup', () => { socket.emit('boost', false); boostBtn.classList.remove('active'); });
+
+    // --- Rendering ---
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function updateLeaderboard() {
+        const sorted = Object.values(players).sort((a, b) => b.score - a.score).slice(0, 5);
+        lbList.innerHTML = sorted.map((p, i) => `
+            <li class="lb-item ${p.id === myId ? 'lb-me' : ''} ${i===0?'lb-king':''}">
+                <span class="lb-name" style="color:${p.color}">${p.name}</span>
+                <span class="lb-score">${p.score}</span>
+            </li>
+        `).join('');
+    }
+
+    function drawCrown(x, y) {
+        ctx.save();
+        ctx.translate(x, y - 15);
+        ctx.fillStyle = '#FFD700'; // Gold
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 10;
+        
+        // Simple Crown Path
+        ctx.beginPath();
+        ctx.moveTo(-8, 0);
+        ctx.lineTo(-10, -10);
+        ctx.lineTo(-5, -5);
+        ctx.lineTo(0, -12);
+        ctx.lineTo(5, -5);
+        ctx.lineTo(10, -10);
+        ctx.lineTo(8, 0);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.restore();
+        
+        // Add particles
+        if (Math.random() > 0.5) {
+            particles.push({
+                x: x + (Math.random()-0.5)*20,
+                y: y - 20,
+                vx: (Math.random()-0.5)*1,
+                vy: -Math.random()*1,
+                life: 1.0,
+                color: '#FFD700'
+            });
+        }
+    }
+
+    function draw() {
+        // Clear
+        ctx.fillStyle = '#0a0a10';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Calculate Interpolation Factor
+        let now = Date.now();
+        let t = (now - lastUpdateTime) / TICK_MS;
+        if (t > 1) t = 1; // Clamp to avoid overshooting if lag
+
+        // Prepare Interpolated Players
+        let renderPlayers = {};
+        for(let id in currState.players) {
+            let curr = currState.players[id];
+            let prev = prevState.players[id];
+            if (!prev) prev = curr; // No history, snap
+            
+            renderPlayers[id] = {
+                ...curr,
+                snake: getInterpolatedSnake(curr.snake, prev.snake, t)
+            };
+        }
+        
+        // Prepare Interpolated AI
+        let renderAIs = currState.aiSnakes.map(curr => {
+            let prev = prevState.aiSnakes.find(p => p.id === curr.id);
+            if (!prev) prev = curr;
+            return {
+                ...curr,
+                snake: getInterpolatedSnake(curr.snake, prev.snake, t)
+            };
+        });
+
+        // Camera Follow Interpolated Self
+        const me = renderPlayers[myId];
+        let camX = 0, camY = 0;
+        if (me && me.snake.length > 0) {
+            const head = me.snake[0];
+            camX = canvas.width/2 - head.x * gridSize - gridSize/2;
+            camY = canvas.height/2 - head.y * gridSize - gridSize/2;
+        } else {
+             camX = canvas.width/2 - (tileCountX * gridSize)/2;
+             camY = canvas.height/2 - (tileCountY * gridSize)/2;
+        }
+        camera.x += (camX - camera.x) * 0.1;
+        camera.y += (camY - camera.y) * 0.1;
+
+        ctx.save();
+        ctx.translate(camera.x, camera.y);
+
+        // Grid & Border
+        ctx.strokeStyle = '#333';
+        ctx.strokeRect(0, 0, tileCountX * gridSize, tileCountY * gridSize);
+        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+        ctx.beginPath();
+        for (let x = 0; x <= tileCountX; x++) { ctx.moveTo(x*gridSize,0); ctx.lineTo(x*gridSize, tileCountY*gridSize); }
+        for (let y = 0; y <= tileCountY; y++) { ctx.moveTo(0,y*gridSize); ctx.lineTo(tileCountX*gridSize, y*gridSize); }
+        ctx.stroke();
+
+        // Food
+        food.forEach(f => {
+            // No client-side prediction hiding
+            // Wait for server to remove food to avoid flickering
+            
+            if (f.type === 1) { // Big
+                ctx.fillStyle = '#ff0055'; // Same as Normal
+                ctx.beginPath();
+                // Render at center: x*gridSize + gridSize/2
+                // Big Radius: gridSize/2 - 2 (larger)
+                ctx.arc(f.x*gridSize + gridSize/2, f.y*gridSize + gridSize/2, gridSize/2-2, 0, Math.PI*2);
+                ctx.fill();
+            } else if (f.type === 2) { // Poison
+                ctx.fillStyle = '#aa00ff'; // Purple
+                ctx.beginPath();
+                // Normal Radius: gridSize/2 - 6
+                ctx.arc(f.x*gridSize + gridSize/2, f.y*gridSize + gridSize/2, gridSize/2-6, 0, Math.PI*2); 
+                ctx.fill();
+            } else { // Normal
+                ctx.fillStyle = '#ff0055';
+                ctx.beginPath();
+                // Normal Radius: gridSize/2 - 6
+                ctx.arc(f.x*gridSize + gridSize/2, f.y*gridSize + gridSize/2, gridSize/2-6, 0, Math.PI*2);
+                ctx.fill();
+            }
+        });
+
+        // Players
+        for (let id in renderPlayers) {
+            const p = renderPlayers[id];
+            if (p.isDead) continue;
+
+            // Invulnerable effect
+            if (p.invulnerable > 0) {
+                ctx.globalAlpha = 0.5 + 0.3 * Math.sin(Date.now() / 100);
+            } else {
+                ctx.globalAlpha = 1.0;
+            }
+            
+            ctx.fillStyle = p.color;
+            
+            // Poison Effect: Purple Glow Stroke
+            if (p.poisoned > 0) {
+                ctx.shadowColor = '#aa00ff';
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = '#aa00ff';
+                ctx.lineWidth = 2;
+            } else {
+                ctx.shadowBlur = 0;
+                ctx.lineWidth = 0;
+            }
+            
+            p.snake.forEach((s, i) => {
+                const px = s.x * gridSize;
+                const py = s.y * gridSize;
+                ctx.fillRect(px + 1, py + 1, gridSize - 2, gridSize - 2);
+                
+                if (p.poisoned > 0) {
+                    ctx.strokeRect(px, py, gridSize, gridSize);
+                }
+                
+                // Head
+                if (i === 0) {
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(px+4, py+4, 4, 4);
+                    ctx.fillRect(px+gridSize-8, py+4, 4, 4);
+                    ctx.fillStyle = p.color;
+                    
+                    // Name
+                }
+            });
+
+            // Draw Name (After body to ensure it's on top)
+            if (p.snake.length > 0) {
+                const head = p.snake[0];
+                const px = head.x * gridSize;
+                const py = head.y * gridSize;
+                
+                ctx.save();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                ctx.strokeText(p.name || 'Player', px + gridSize/2, py - 4);
+                ctx.fillText(p.name || 'Player', px + gridSize/2, py - 4);
+                ctx.restore();
+            }
+            
+            ctx.shadowBlur = 0; // Reset
+            ctx.globalAlpha = 1.0;
+        }
+        
+        // Draw Crown separately (on top of everything)
+        if (topPlayerId && renderPlayers[topPlayerId] && !renderPlayers[topPlayerId].isDead) {
+            const p = renderPlayers[topPlayerId];
+            const head = p.snake[0];
+            // Directly on head
+            drawCrown(head.x * gridSize + gridSize/2, head.y * gridSize);
+        }
+        
+        // AI Snakes
+        renderAIs.forEach(ai => {
+            if (ai.isDead) return;
+            
+            // Use same rendering style as players
+            // No Rage Glow, No Special Borders, just color
+            // Always use Dark Blue (ignore rage mode red)
+            const aiColor = '#1E3A8A';
+            
+            ctx.fillStyle = aiColor;
+            
+            ai.snake.forEach((s, i) => {
+                const px = s.x * gridSize;
+                const py = s.y * gridSize;
+                
+                // Body
+                ctx.fillRect(px + 1, py + 1, gridSize - 2, gridSize - 2);
+                
+                // Head (Same style as player: White Eyes + Name)
+                if (i === 0) {
+                    // Eyes
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(px+4, py+4, 4, 4);
+                    ctx.fillRect(px+gridSize-8, py+4, 4, 4);
+                    
+                    // Restore Body Color for Name
+                    ctx.fillStyle = aiColor;
+                    
+                    // Name - Removed from here
+                    // ctx.fillStyle = 'white'; // Name always white for readability
+                    // ctx.font = '10px Arial';
+                    // ctx.textAlign = 'center';
+                    // ctx.fillText(ai.name, px + gridSize/2, py - 5);
+                    
+                    // Restore for next iteration
+                    ctx.fillStyle = aiColor;
+                }
+            });
+
+            // Draw AI Name
+            if (ai.snake.length > 0) {
+                const head = ai.snake[0];
+                const px = head.x * gridSize;
+                const py = head.y * gridSize;
+
+                ctx.save();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                ctx.strokeText(ai.name || 'AI', px + gridSize/2, py - 4);
+                ctx.fillText(ai.name || 'AI', px + gridSize/2, py - 4);
+                ctx.restore();
+            }
+        });
+        
+        // Particles
+        particles.forEach((p, i) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.02;
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, 3, 3);
+            if(p.life <= 0) particles.splice(i, 1);
+        });
+        ctx.globalAlpha = 1.0;
+
+        ctx.restore();
+        requestAnimationFrame(draw);
+    }
+
+    draw();
+</script>
+</body>
+</html>
