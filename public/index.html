@@ -277,6 +277,7 @@
     <div id="stats" class="hud-panel">
         <div>得分: <span id="score-val">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
+        <div style="font-size: 10px; color: #888; margin-top: 2px;">延迟: <span id="ping-val" style="color:#0f0">0</span>ms</div>
     </div>
     
     <div id="leaderboard" class="hud-panel">
@@ -366,6 +367,7 @@
     const respawnBtn = document.getElementById('respawn-btn');
     const scoreVal = document.getElementById('score-val');
     const aiCountVal = document.getElementById('ai-count');
+    const pingVal = document.getElementById('ping-val');
     const finalScoreVal = document.getElementById('final-score');
     const lbList = document.getElementById('leaderboard-list');
     const killFeed = document.getElementById('kill-feed');
@@ -602,6 +604,20 @@
     
     socket.on('kill_event', (data) => {
         addKillFeed(data.killer, data.victim);
+    });
+
+    // Latency Monitor
+    setInterval(() => {
+        const start = Date.now();
+        socket.emit('ping_check', start);
+    }, 2000); // Check every 2s
+
+    socket.on('pong_check', (start) => {
+        const latency = Date.now() - start;
+        pingVal.textContent = latency;
+        if (latency < 100) pingVal.style.color = '#0f0'; // Green
+        else if (latency < 200) pingVal.style.color = '#fa0'; // Orange
+        else pingVal.style.color = '#f00'; // Red
     });
 
     // --- Input ---

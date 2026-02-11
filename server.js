@@ -800,6 +800,11 @@ io.on('connection', (socket) => {
         socket.emit('highscore_update', highScores);
     });
 
+    // Ping/Pong for latency check
+    socket.on('ping_check', (clientTime) => {
+        socket.emit('pong_check', clientTime);
+    });
+
     socket.on('disconnect', () => {
         delete players[socket.id];
     });
