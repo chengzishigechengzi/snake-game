@@ -199,7 +199,7 @@
     let currState = { players: {}, aiSnakes: [], food: [] };
     let prevState = { players: {}, aiSnakes: [], food: [] };
     let lastUpdateTime = 0;
-    const TICK_MS = 50; // Server tick rate
+    const TICK_MS = 1000 / 30; // Match server 30Hz
     
     // Legacy refs for convenience (point to currState mostly)
     let players = {}; 
@@ -346,7 +346,21 @@
         return start + (end - start) * t;
     }
 
-    function getInterpolatedSnake(currSnake, prevSnake, t) {
+    function getInterpolatedSnake(currSnake, prevSnake, t, velocity) {
+        if (!currSnake || currSnake.length === 0) return [];
+        
+        // Extrapolation (Lag Compensation)
+        if (t > 1) {
+            // Limit extrapolation to avoid ghosts (Max ~200ms)
+            const et = Math.min(t - 1, 6.0);
+            if (!velocity) return currSnake;
+            
+            return currSnake.map(segment => ({
+                x: segment.x + velocity.x * et,
+                y: segment.y + velocity.y * et
+            }));
+        }
+
         if (!prevSnake || prevSnake.length !== currSnake.length) return currSnake;
         
         return currSnake.map((segment, i) => {
@@ -548,7 +562,7 @@
         // Calculate Interpolation Factor
         let now = Date.now();
         let t = (now - lastUpdateTime) / TICK_MS;
-        if (t > 1) t = 1; // Clamp to avoid overshooting if lag
+        // t is allowed to go > 1 for extrapolation
 
         // Prepare Interpolated Players
         let renderPlayers = {};
@@ -559,7 +573,7 @@
             
             renderPlayers[id] = {
                 ...curr,
-                snake: getInterpolatedSnake(curr.snake, prev.snake, t)
+                snake: getInterpolatedSnake(curr.snake, prev.snake, t, curr.velocity)
             };
         }
         
@@ -569,7 +583,7 @@
             if (!prev) prev = curr;
             return {
                 ...curr,
-                snake: getInterpolatedSnake(curr.snake, prev.snake, t)
+                snake: getInterpolatedSnake(curr.snake, prev.snake, t, curr.velocity)
             };
         });
 

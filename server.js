@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const GRID_SIZE = 20;
 const TILE_COUNT_X = 60;
 const TILE_COUNT_Y = 40;
-const TICK_RATE = 20; // Increased Tick Rate for smoother gameplay (30% boost baseline)
+const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
 // --- State ---
@@ -864,7 +864,8 @@ setInterval(() => {
                  invulnerable: p.invulnerable,
                  poisoned: p.poisoned, // Ensure this is sent
                  magnet: p.magnet,
-                 speedBoost: p.speedBoost
+                 speedBoost: p.speedBoost,
+                 velocity: p.velocity // Send velocity for client-side extrapolation
              };
              return acc;
         }, {}),
@@ -875,7 +876,8 @@ setInterval(() => {
             isDead: ai.isDead,
             rageMode: ai.rageMode,
             color: ai.color,
-            name: ai.name
+            name: ai.name,
+            velocity: ai.velocity
         })),
         topPlayerId: topPlayerId
     });
