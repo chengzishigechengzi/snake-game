@@ -818,7 +818,7 @@ setInterval(() => {
         if (p.magnet > 0) {
             let head = p.snake[0];
             foodItems.forEach(f => {
-                // Don't attract Poison (Type 2)
+                // Don't attract Poison (Type 2) - STRICT CHECK
                 if (f.type === 2) return;
 
                 let dx = head.x - f.x;
@@ -826,6 +826,8 @@ setInterval(() => {
                 let dist = Math.abs(dx) + Math.abs(dy);
                 if (dist < 10) { // Range
                     // Move food towards head
+                    // BUT: Ensure we don't accidentally pull it INTO a poison apple (unlikely but safe to check?)
+                    // For now, just move it.
                     if (dx > 0) f.x++; else if (dx < 0) f.x--;
                     if (dy > 0) f.y++; else if (dy < 0) f.y--;
                 }

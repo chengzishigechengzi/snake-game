@@ -527,10 +527,11 @@
     }
 
     function updateHighScoreUI(scores) {
+        console.log("Updating High Scores:", scores); // Debug
         if (!scores || scores.length === 0) {
             const emptyHtml = '<li style="text-align:center; color:#666;">暂无记录...</li>';
-            menuHsList.innerHTML = emptyHtml;
-            deathHsList.innerHTML = emptyHtml;
+            if(menuHsList) menuHsList.innerHTML = emptyHtml;
+            if(deathHsList) deathHsList.innerHTML = emptyHtml;
             return;
         }
 
@@ -542,8 +543,8 @@
             </li>
         `).join('');
 
-        menuHsList.innerHTML = html;
-        deathHsList.innerHTML = html;
+        if(menuHsList) menuHsList.innerHTML = html;
+        if(deathHsList) deathHsList.innerHTML = html;
     }
 
     // --- Socket Events ---
