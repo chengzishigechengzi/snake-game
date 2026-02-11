@@ -478,10 +478,11 @@ class AISnake {
         // Match Player Speed Exactly
         // Standard: 1.5
         // Boost: 0.6
+        // Update: Increased speed by 20% (Threshold 1.5 -> 1.2)
         
-        let threshold = 1.5;
-        if (this.rageMode) threshold = 1.2; // Rage slightly faster
-        if (this.speedBoost) threshold = 0.6;
+        let threshold = 1.2;
+        if (this.rageMode) threshold = 1.0; // Rage slightly faster
+        if (this.speedBoost) threshold = 0.5;
 
         this.moveTick++;
         if (this.moveTick >= threshold) {
@@ -754,6 +755,9 @@ setInterval(() => {
         if (p.magnet > 0) {
             let head = p.snake[0];
             foodItems.forEach(f => {
+                // Don't attract Poison (Type 2)
+                if (f.type === 2) return;
+
                 let dx = head.x - f.x;
                 let dy = head.y - f.y;
                 let dist = Math.abs(dx) + Math.abs(dy);
