@@ -27,6 +27,42 @@ let players = {};
 let foodItems = [];
 let aiSnakes = []; // Array of AI objects
 let aiIdCounter = 0;
+// High Score List: {name: string, score: number}[]
+let highScores = []; 
+
+function updateHighScores(player) {
+    if (player.score <= 0) return;
+    
+    // Check if qualifies for Top 3
+    let qualified = false;
+    if (highScores.length < 3) qualified = true;
+    else if (player.score > highScores[highScores.length-1].score) qualified = true;
+    
+    if (qualified) {
+        // Add current score
+        // If player already in list with LOWER score, update it?
+        // Or just treat as new entry? Usually arcades allow multiple entries from same person if better.
+        // Let's allow duplicates for now, or maybe check name?
+        // Let's filter by Name to avoid spamming the board with one person
+        const existingIndex = highScores.findIndex(h => h.name === player.name);
+        
+        if (existingIndex !== -1) {
+            // Update only if higher
+            if (player.score > highScores[existingIndex].score) {
+                highScores[existingIndex].score = player.score;
+            }
+        } else {
+            highScores.push({ name: player.name, score: player.score });
+        }
+        
+        // Sort and Trim
+        highScores.sort((a, b) => b.score - a.score);
+        if (highScores.length > 3) highScores = highScores.slice(0, 3);
+        
+        // Broadcast Update
+        io.emit('highscore_update', highScores);
+    }
+}
 
 // Pathfinding Grid (reused)
 const pfGrid = new PF.Grid(TILE_COUNT_X, TILE_COUNT_Y);
@@ -614,6 +650,9 @@ function initPlayer(socket) {
     
     // Attach helper to object (monkey patch style for simplicity in this file)
     players[socket.id].die = function() {
+        // Update High Score on Death
+        updateHighScores(this);
+        
         this.isDead = true;
         io.emit('play_sound', { id: this.id, type: 'die' });
         
@@ -678,7 +717,8 @@ io.on('connection', (socket) => {
         id: socket.id,
         gridSize: GRID_SIZE,
         tileCountX: TILE_COUNT_X,
-        tileCountY: TILE_COUNT_Y
+        tileCountY: TILE_COUNT_Y,
+        highScores: highScores // Send initial high scores
     });
 
     socket.on('input', (data) => {
