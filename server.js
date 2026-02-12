@@ -34,7 +34,8 @@ const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
 const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
-const AUTO_FOOD_LIMIT = Math.floor(TOTAL_TILES * 0.20); // 20% limit for automatic spawning
+const AUTO_FOOD_LIMIT = Math.floor(TOTAL_TILES * 0.20); // 20% Upper limit
+const AUTO_FOOD_FLOOR = Math.floor(TOTAL_TILES * 0.10); // 10% Lower limit
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -228,8 +229,8 @@ function spawnSpecificFood(x, y, type = 0) {
     foodItems.push({ x, y, type });
 }
 
-// Initial food spawn
-spawnFood(100);
+// Initial food spawn: Start with 10% density
+spawnFood(AUTO_FOOD_FLOOR, true);
 
 // --- AI System ---
 class AISnake {
@@ -989,7 +990,10 @@ setInterval(() => {
                     
                     foodItems.splice(i, 1);
                     ate = true;
-                    spawnFood(1);
+                    // Auto-refill only if below 10% floor
+                    if (foodItems.length < AUTO_FOOD_FLOOR) {
+                        spawnFood(1);
+                    }
                     break;
                 }
             }
