@@ -34,9 +34,8 @@ const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
 const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
-const AUTO_FOOD_LIMIT = 1000; // Fixed 1000 items
-const AUTO_FOOD_FLOOR = 1000; // Fixed 1000 items to maintain count
-const MAX_FOOD_TOTAL = 2000; // Allow some extra for death drops but keep it controlled
+const AUTO_FOOD_LIMIT = 400; // Increased back to a reasonable amount for 100x100
+const AUTO_FOOD_FLOOR = 200; // Floor to ensure enough food is always present
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -228,10 +227,13 @@ function getUniquePlayerColor() {
     return `hsl(${hue}, 70%, 50%)`;
 }
 
-function spawnSpecificFood(x, y, type = 0) {
-    // Respect the absolute hard limit to prevent "crowded" maps from death drops
-    if (foodItems.length >= MAX_FOOD_TOTAL) return;
+function spawnSpecificFood(x, y, type) {
+    // Basic boundary check
+    if (x < 0 || x >= TILE_COUNT_X || y < 0 || y >= TILE_COUNT_Y) return;
+    
     foodItems.push({ x, y, type });
+    // Keep it sane (e.g. max 1000 items total)
+    if (foodItems.length > 1000) foodItems.shift();
 }
 
 // Initial food spawn: Start with 10% density
@@ -676,10 +678,7 @@ class AISnake {
                 this.score += 10;
                 foodItems.splice(i, 1);
                 ate = true;
-                // Maintain exactly 1000 items
-                if (foodItems.length < AUTO_FOOD_FLOOR) {
-                    spawnFood(AUTO_FOOD_FLOOR - foodItems.length);
-                }
+                spawnFood(1);
                 break;
             }
         }
@@ -704,7 +703,8 @@ class AISnake {
                    let type = 0;
                    let r = Math.random();
                    if (r < 0.2) type = 1; // Big (20%)
-                   else type = 0; // Normal (80%) - NO POISON
+                   else if (r < 0.3) type = 2; // Poison (10%)
+                   else type = 0; // Normal (70%)
                    spawnSpecificFood(s.x, s.y, type);
                }
           });
@@ -768,8 +768,9 @@ function initPlayer(socket) {
                 // Randomize food type
                 let type = 0; // Normal
                 let r = Math.random();
-                if (r < 0.3) type = 1; // Big (30%)
-                else type = 0; // Normal (70%) - NO POISON
+                if (r < 0.2) type = 1; // Big (20%)
+                else if (r < 0.3) type = 2; // Poison (10% chance to drop on death!)
+                else type = 0; // Normal (70%)
                 
                 spawnSpecificFood(s.x, s.y, type);
             }
@@ -788,6 +789,7 @@ function initPlayer(socket) {
         this.boostCooldown = 0;
         this.velocity = {x:0,y:0};
         this.nextVelocity = {x:0,y:0};
+        this.moveTick = 0; // RESET MOVE TICK!
         
         let startPos = getRandomPosition();
         this.snake = [startPos];
@@ -872,18 +874,10 @@ io.on('connection', (socket) => {
 
 // Game Loop
 let lastTime = Date.now();
-let logTimer = 0;
 setInterval(() => {
     let now = Date.now();
     let dt = now - lastTime;
     lastTime = now;
-
-    // Monitor food count every 5 seconds
-    logTimer += dt;
-    if (logTimer >= 5000) {
-        console.log(`[Monitor] Current Food Count: ${foodItems.length} (Limit: ${AUTO_FOOD_LIMIT}, HardMax: ${MAX_FOOD_TOTAL})`);
-        logTimer = 0;
-    }
 
     // 1. Update AI
     aiSnakes.forEach(ai => ai.update());
@@ -1006,9 +1000,9 @@ setInterval(() => {
                     
                     foodItems.splice(i, 1);
                     ate = true;
-                    // Maintain exactly 1000 items
+                    // Auto-refill ONLY if we fall below the 10% floor
                     if (foodItems.length < AUTO_FOOD_FLOOR) {
-                        spawnFood(AUTO_FOOD_FLOOR - foodItems.length);
+                        spawnFood(1);
                     }
                     break;
                 }
