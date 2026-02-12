@@ -905,15 +905,13 @@ setInterval(() => {
         if (!p.moveTick) p.moveTick = 0;
         p.moveTick++;
         
-        // Base Speed 30% faster -> means threshold is lower.
-        // Standard was 2. Let's make it 1.5? (Alternating 1 and 2 ticks)
-        // Boost = 1.
-        let threshold = 5.0; // Slow speed
-        if (p.speedBoost) threshold = 2.5; 
+        // Base Speed 
+        let threshold = 3.0; 
+        if (p.speedBoost) threshold = 1.5; 
         
-        // Poison Effect
+        // Poison Effect: Slow down significantly
         if (p.poisoned > 0) {
-            threshold = 10.0; 
+            threshold = 9.0; 
         }
         
         if (p.moveTick >= threshold) {
@@ -969,6 +967,7 @@ setInterval(() => {
                     } else if (f.type === 2) { // Poison Food
                         p.score += 10;
                         p.poisoned = 3000; // 3s Poison
+                        p.speedBoost = false; // Disable current boost
                         io.emit('play_sound', { id: p.id, type: 'poison' });
                         // Notify client to show toast
                         io.to(p.id).emit('show_toast', { message: '你中毒了', duration: 1000 });
@@ -990,28 +989,47 @@ setInterval(() => {
         }
     }
 
-    io.emit('state', {
-        players: Object.keys(players).reduce((acc, id) => {
-             // Only send necessary data to reduce bandwidth, or send full object if lazy
-             // But we MUST include 'poisoned'
-             let p = players[id];
-             acc[id] = {
-                 id: p.id,
-                 name: p.name,
-                 snake: p.snake,
-                 color: p.color,
-                 score: p.score,
-                 isDead: p.isDead,
-                 invulnerable: p.invulnerable,
-                 poisoned: p.poisoned, // Ensure this is sent
-                 magnet: p.magnet,
-                 speedBoost: p.speedBoost,
-                 velocity: p.velocity // Send velocity for client-side extrapolation
-             };
-             return acc;
-        }, {}),
-        food: foodItems,
-        aiSnakes: aiSnakes.map(ai => ({
+    // --- Broadcast Optimized State (AOI) ---
+    const VIEW_DISTANCE = 30; // Tiles visible around head
+
+    for (let id in players) {
+        const p = players[id];
+        if (p.isDead) continue;
+
+        const head = p.snake[0];
+        
+        // Filter entities within view distance
+        const visiblePlayers = {};
+        for (let otherId in players) {
+            const other = players[otherId];
+            if (other.isDead) continue;
+            const otherHead = other.snake[0];
+            if (Math.abs(otherHead.x - head.x) < VIEW_DISTANCE && Math.abs(otherHead.y - head.y) < VIEW_DISTANCE) {
+                visiblePlayers[otherId] = {
+                    id: other.id,
+                    name: other.name,
+                    snake: other.snake,
+                    color: other.color,
+                    score: other.score,
+                    isDead: other.isDead,
+                    invulnerable: other.invulnerable,
+                    poisoned: other.poisoned,
+                    magnet: other.magnet,
+                    speedBoost: other.speedBoost,
+                    velocity: other.velocity
+                };
+            }
+        }
+
+        const visibleFood = foodItems.filter(f => 
+            Math.abs(f.x - head.x) < VIEW_DISTANCE && Math.abs(f.y - head.y) < VIEW_DISTANCE
+        );
+
+        const visibleAI = aiSnakes.filter(ai => {
+            if (ai.isDead) return false;
+            const aiHead = ai.snake[0];
+            return Math.abs(aiHead.x - head.x) < VIEW_DISTANCE && Math.abs(aiHead.y - head.y) < VIEW_DISTANCE;
+        }).map(ai => ({
             id: ai.id,
             snake: ai.snake,
             isDead: ai.isDead,
@@ -1019,10 +1037,16 @@ setInterval(() => {
             color: ai.color,
             name: ai.name,
             velocity: ai.velocity,
-            spawnSafe: ai.spawnSafeTimer > 0 // Send safe state
-        })),
-        topPlayerId: topPlayerId
-    });
+            spawnSafe: ai.spawnSafeTimer > 0
+        }));
+
+        io.to(id).emit('state', {
+            players: visiblePlayers,
+            food: visibleFood,
+            aiSnakes: visibleAI,
+            topPlayerId: topPlayerId
+        });
+    }
 
 }, TICK_MS);
 

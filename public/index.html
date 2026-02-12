@@ -105,21 +105,25 @@
 
         #toast {
             position: absolute;
-            top: 20%;
+            top: 30%;
             left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(196, 2, 255, 0.6);
+            transform: translate(-50%, -50%);
+            background-color: rgba(196, 2, 255, 0.8);
             color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 16px;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 24px;
+            font-weight: bold;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 2000;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 3000;
+            box-shadow: 0 0 20px rgba(170, 0, 255, 0.5);
+            border: 2px solid #aa00ff;
         }
         #toast.show {
             opacity: 1;
+            top: 25%;
         }
 
         /* Controls */
@@ -297,7 +301,7 @@
         <div>得分: <span id="score-val">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 2px;">延迟: <span id="ping-val" style="color:#0f0">0</span>ms</div>
-你我        <div style="font-size: 9px; color: #555; margin-top: 5px;">v1.0.2 - Anti-Cache</div>
+        <div style="font-size: 9px; color: #555; margin-top: 5px;">v1.0.3 - Responsive Fix</div>
     </div>
     
     <div id="leaderboard" class="hud-panel">
@@ -518,13 +522,11 @@
         return start + (end - start) * t;
     }
 
-    function getInterpolatedSnake(currSnake, prevSnake, t, velocity) {
+    function getInterpolatedSnake(currSnake, prevSnake, t, velocity, isMe = false) {
         if (!currSnake || currSnake.length === 0) return [];
         
-        // Fix: Removed linear extrapolation for body segments
-        // It caused the "Drifting" issue where the tail would move sideways with head velocity.
-        // Instead, we just clamp t to 1. If lag happens, we wait (snap) rather than drift.
-        if (t > 1) t = 1;
+        // Use local input for head if it's me to ensure "Instant" feel
+        const effectiveVelocity = (isMe && (lastInput.x !== 0 || lastInput.y !== 0)) ? lastInput : velocity;
 
         if (!prevSnake || prevSnake.length !== currSnake.length) return currSnake;
         
@@ -533,14 +535,26 @@
             if (!prevSeg) return segment;
             
             // If distance is large (wrap or respawn), don't interpolate
-            if (Math.abs(segment.x - prevSeg.x) > 1 || Math.abs(segment.y - prevSeg.y) > 1) {
+            if (Math.abs(segment.x - prevSeg.x) > 1.1 || Math.abs(segment.y - prevSeg.y) > 1.1) {
                 return segment;
             }
             
-            // Smooth lerp
+            // For head (index 0), extrapolate forward to hide latency
+            if (i === 0) {
+                // If t < 1, we are interpolating. If t >= 1, we are extrapolating.
+                // We always move forward from the latest server position to feel "responsive"
+                const extraT = Math.max(0, t); 
+                return {
+                    x: segment.x + effectiveVelocity.x * extraT,
+                    y: segment.y + effectiveVelocity.y * extraT
+                };
+            }
+
+            // For body, use smooth lerp but stay behind head for stability
+            const bodyT = Math.min(Math.max(t, 0), 1.0);
             return {
-                x: lerp(prevSeg.x, segment.x, t),
-                y: lerp(prevSeg.y, segment.y, t)
+                x: lerp(prevSeg.x, segment.x, bodyT),
+                y: lerp(prevSeg.y, segment.y, bodyT)
             };
         });
     }
@@ -614,8 +628,10 @@
         
         const me = players[myId];
         if (me) {
-            // Server reconciliation: Sync client lastInput with server velocity if needed
-            // But usually we trust our local input stream more for responsiveness
+            // Sync local input state with server reality to prevent "input lag" feel
+            if (me.velocity) {
+                lastInput = { x: me.velocity.x, y: me.velocity.y };
+            }
             
             scoreVal.textContent = me.score;
             aiCountVal.textContent = aiSnakes.length;
@@ -823,7 +839,7 @@
             
             renderPlayers[id] = {
                 ...curr,
-                snake: getInterpolatedSnake(curr.snake, prev.snake, t, curr.velocity)
+                snake: getInterpolatedSnake(curr.snake, prev.snake, t, curr.velocity, id === myId)
             };
         }
         

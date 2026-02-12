@@ -31,7 +31,7 @@ pm2 start server.js --name "snake-game"
 
 # 5. 最终验证
 echo ">>> 部署完成！正在验证版本..."
-curl -s http://localhost:8080 | grep "v1.0.2"
+curl -s http://localhost:8080 | grep "v1.0.3"
 
 echo "=========================================="
 echo " 更新成功！请通过无痕模式访问: "
