@@ -1083,5 +1083,7 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} (v2-SlowSpeed)`);
+  foodItems = []; // Force clear on start
+  spawnFood(AUTO_FOOD_FLOOR, true);
+  console.log(`Server running on port ${PORT} (v1.1.2-Clean)`);
 });
