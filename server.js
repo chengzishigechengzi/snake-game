@@ -132,11 +132,13 @@ function getRandomPosition() {
 }
 
 function spawnFood(count = 1, force = false) {
-    if (!force && foodItems.length >= AUTO_FOOD_LIMIT) return;
-
     for (let i = 0; i < count; i++) {
-        // Double check limit if not forced
+        // Strict limit check: Stop if we hit the ceiling and not forced
         if (!force && foodItems.length >= AUTO_FOOD_LIMIT) break;
+        
+        let pos;
+        let attempts = 0;
+        let valid = false;
         
         // Food Types:
         // 0: Normal (Default)
@@ -990,7 +992,7 @@ setInterval(() => {
                     
                     foodItems.splice(i, 1);
                     ate = true;
-                    // Auto-refill only if below 10% floor
+                    // Auto-refill ONLY if we fall below the 10% floor
                     if (foodItems.length < AUTO_FOOD_FLOOR) {
                         spawnFood(1);
                     }
