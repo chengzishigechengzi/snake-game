@@ -301,7 +301,7 @@
         <div>得分: <span id="score-val">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 2px;">延迟: <span id="ping-val" style="color:#0f0">0</span>ms</div>
-        <div style="font-size: 9px; color: #555; margin-top: 5px;">v1.0.9 - Density Optimization</div>
+        <div style="font-size: 11px; color: #ff0055; margin-top: 5px; font-weight: bold;">v1.1.0 - Ultra Clean Mode</div>
     </div>
     
     <div id="leaderboard" class="hud-panel">
@@ -865,12 +865,12 @@
         ctx.translate(camera.x, camera.y);
 
         // Grid & Border
-        ctx.strokeStyle = '#333';
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
         ctx.strokeRect(0, 0, tileCountX * gridSize, tileCountY * gridSize);
         
         // Performance: Skip grid lines on mobile if needed, or keep them as they are cheap
         if (!isMobile) {
-            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.01)';
             ctx.beginPath();
             for (let x = 0; x <= tileCountX; x++) { ctx.moveTo(x*gridSize,0); ctx.lineTo(x*gridSize, tileCountY*gridSize); }
             for (let y = 0; y <= tileCountY; y++) { ctx.moveTo(0,y*gridSize); ctx.lineTo(tileCountX*gridSize, y*gridSize); }

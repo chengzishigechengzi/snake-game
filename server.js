@@ -34,8 +34,8 @@ const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
 const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
-const AUTO_FOOD_LIMIT = Math.floor(TOTAL_TILES * 0.02); // 2% Upper limit (200 items)
-const AUTO_FOOD_FLOOR = Math.floor(TOTAL_TILES * 0.01); // 1% Lower limit (100 items)
+const AUTO_FOOD_LIMIT = Math.floor(TOTAL_TILES * 0.01); // 1% Upper limit (100 items)
+const AUTO_FOOD_FLOOR = Math.floor(TOTAL_TILES * 0.005); // 0.5% Lower limit (50 items)
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
