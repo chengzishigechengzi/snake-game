@@ -146,8 +146,9 @@ function spawnFood(count = 1) {
         
         let type = 0;
         let r = Math.random();
-        if (r < 0.14) type = 1; // Big
-        else if (r < 0.28) type = 2; // Poison
+        if (r < 0.20) type = 1; // Big (20%)
+        else if (r < 0.40) type = 2; // Poison (20%)
+        else type = 0; // Normal (60%)
         
         while (!valid && attempts < 50) {
             pos = getRandomPosition();

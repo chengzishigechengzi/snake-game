@@ -301,7 +301,7 @@
         <div>得分: <span id="score-val">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 2px;">延迟: <span id="ping-val" style="color:#0f0">0</span>ms</div>
-        <div style="font-size: 9px; color: #555; margin-top: 5px;">v1.0.3 - Responsive Fix</div>
+        <div style="font-size: 9px; color: #555; margin-top: 5px;">v1.0.4 - SnakeBody Fix</div>
     </div>
     
     <div id="leaderboard" class="hud-panel">
@@ -525,36 +525,30 @@
     function getInterpolatedSnake(currSnake, prevSnake, t, velocity, isMe = false) {
         if (!currSnake || currSnake.length === 0) return [];
         
-        // Use local input for head if it's me to ensure "Instant" feel
-        const effectiveVelocity = (isMe && (lastInput.x !== 0 || lastInput.y !== 0)) ? lastInput : velocity;
-
+        // --- 1. Basic Consistency Check ---
+        // If segments don't match, we can't interpolate body
         if (!prevSnake || prevSnake.length !== currSnake.length) return currSnake;
-        
+
+        // --- 2. Calculate Interpolation Factor ---
+        // Clamp t to [0, 1] for ALL segments to ensure body doesn't separate from head
+        // and doesn't overshoot. 
+        const clampedT = Math.min(Math.max(t, 0), 1.0);
+
         return currSnake.map((segment, i) => {
             const prevSeg = prevSnake[i];
             if (!prevSeg) return segment;
             
-            // If distance is large (wrap or respawn), don't interpolate
-            if (Math.abs(segment.x - prevSeg.x) > 1.1 || Math.abs(segment.y - prevSeg.y) > 1.1) {
-                return segment;
-            }
+            // Distance check (for wrapping or respawning)
+            const dx = Math.abs(segment.x - prevSeg.x);
+            const dy = Math.abs(segment.y - prevSeg.y);
+            if (dx > 1.1 || dy > 1.1) return segment;
             
-            // For head (index 0), extrapolate forward to hide latency
-            if (i === 0) {
-                // If t < 1, we are interpolating. If t >= 1, we are extrapolating.
-                // We always move forward from the latest server position to feel "responsive"
-                const extraT = Math.max(0, t); 
-                return {
-                    x: segment.x + effectiveVelocity.x * extraT,
-                    y: segment.y + effectiveVelocity.y * extraT
-                };
-            }
-
-            // For body, use smooth lerp but stay behind head for stability
-            const bodyT = Math.min(Math.max(t, 0), 1.0);
+            // --- 3. Position Calculation ---
+            // For both Head and Body, we use the SAME clampedT.
+            // This ensures the snake "skeleton" stays perfectly connected.
             return {
-                x: lerp(prevSeg.x, segment.x, bodyT),
-                y: lerp(prevSeg.y, segment.y, bodyT)
+                x: lerp(prevSeg.x, segment.x, clampedT),
+                y: lerp(prevSeg.y, segment.y, clampedT)
             };
         });
     }
