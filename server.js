@@ -30,13 +30,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // --- Constants ---
-const VERSION = 'v1.1.1';
+const VERSION = 'v1.1.2';
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
 const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
-const AUTO_FOOD_LIMIT = 400; // Increased back to a reasonable amount for 100x100
-const AUTO_FOOD_FLOOR = 200; // Floor to ensure enough food is always present
+const AUTO_FOOD_LIMIT = 600; // 6% density
+const AUTO_FOOD_FLOOR = 400; // 4% floor
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -513,10 +513,11 @@ class AISnake {
                 }
 
             } else {
-                // Find closest food
+                // Find closest food (Avoid Poison!)
                 let minFoodDist = Infinity;
                 let closestFood = null;
                 for (let f of foodItems) {
+                    if (f.type === 2) continue; // AI avoids poison!
                     let d = Math.abs(f.x - head.x) + Math.abs(f.y - head.y);
                     if (d < minFoodDist) {
                         minFoodDist = d;
@@ -676,6 +677,13 @@ class AISnake {
         let ate = false;
         for (let i = 0; i < foodItems.length; i++) {
             if (foodItems[i].x === head.x && foodItems[i].y === head.y) {
+                if (foodItems[i].type === 2) {
+                    // AI ate poison!
+                    this.die();
+                    foodItems.splice(i, 1);
+                    spawnFood(1);
+                    return; // Stop processing move
+                }
                 this.score += 10;
                 foodItems.splice(i, 1);
                 ate = true;
@@ -953,27 +961,69 @@ setInterval(() => {
 
             // Body/Other Player Collision
             let collision = false;
+            let killer = null;
             if (p.invulnerable <= 0) {
                 // Self
                 if (p.snake.some(s => s.x === head.x && s.y === head.y)) collision = true;
-                // Others
-                for (let otherId in players) {
-                    let other = players[otherId];
-                    if (other.isDead) continue;
-                    if (other.snake.some(s => s.x === head.x && s.y === head.y)) collision = true;
+                
+                // Others (Players)
+                if (!collision) {
+                    for (let otherId in players) {
+                        let other = players[otherId];
+                        if (other.id === p.id || other.isDead) continue;
+                        
+                        // Head to Head
+                        if (other.snake[0].x === head.x && other.snake[0].y === head.y) {
+                            if (p.score < other.score) {
+                                collision = true;
+                                killer = other;
+                            } else if (p.score > other.score) {
+                                other.die(); // We kill them
+                            } else {
+                                collision = true; // Tie, we both die (other dies in their tick or we force it)
+                                other.die();
+                            }
+                            break;
+                        }
+                        
+                        // Head to Body
+                        if (other.snake.some(s => s.x === head.x && s.y === head.y)) {
+                            collision = true;
+                            killer = other;
+                            break;
+                        }
+                    }
                 }
+                
                 // AI
-                for (let ai of aiSnakes) {
-                    if (ai.isDead) continue;
-                    // If AI is in spawn safe mode, it is a ghost - no collision
-                    if (ai.spawnSafeTimer > 0) continue;
-                    
-                    if (ai.snake.some(s => s.x === head.x && s.y === head.y)) collision = true;
+                if (!collision) {
+                    for (let ai of aiSnakes) {
+                        if (ai.isDead || ai.spawnSafeTimer > 0) continue;
+                        
+                        // Head to Head AI
+                        if (ai.snake[0].x === head.x && ai.snake[0].y === head.y) {
+                            if (p.score < ai.score) {
+                                collision = true;
+                            } else if (p.score > ai.score) {
+                                ai.die(p);
+                            } else {
+                                collision = true;
+                                ai.die(p);
+                            }
+                            break;
+                        }
+
+                        if (ai.snake.some(s => s.x === head.x && s.y === head.y)) {
+                            collision = true;
+                            break;
+                        }
+                    }
                 }
             }
 
             if (collision) {
                 p.die();
+                if (killer) killer.addKillReward();
                 continue;
             }
 
