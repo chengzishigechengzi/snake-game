@@ -31,9 +31,13 @@ pm2 start server.js --name "snake-game"
 
 # 5. 最终验证
 echo ">>> 部署完成！正在验证版本..."
-curl -s http://localhost:8080 | grep "v1.0.3"
+# 动态获取 index.html 中的版本号
+CURRENT_VERSION=$(grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" $PROJECT_DIR/public/index.html | head -n 1)
+echo ">>> 当前生产品版本: $CURRENT_VERSION"
 
 echo "=========================================="
-echo " 更新成功！请通过无痕模式访问: "
+echo " 更新成功！"
+echo " 请在浏览器访问并检查左侧是否显示: $CURRENT_VERSION"
+echo " 如果不是，请务必执行：Ctrl + F5 (PC) 或 清理浏览器缓存 (手机)"
 echo " http://47.112.222.117:8080 "
 echo "=========================================="

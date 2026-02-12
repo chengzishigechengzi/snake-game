@@ -30,6 +30,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // --- Constants ---
+const VERSION = 'v1.1.1';
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
@@ -816,6 +817,7 @@ io.on('connection', (socket) => {
 
     socket.emit('init', {
         id: socket.id,
+        version: VERSION,
         gridSize: GRID_SIZE,
         tileCountX: TILE_COUNT_X,
         tileCountY: TILE_COUNT_Y,
@@ -1077,5 +1079,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} (v2-SlowSpeed)`);
+  console.log(`Server running on port ${PORT} (${VERSION})`);
 });
