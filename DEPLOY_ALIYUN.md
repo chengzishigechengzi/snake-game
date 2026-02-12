@@ -11,34 +11,35 @@
 
 ---
 
-## 第二步：一键部署代码 (在黑色窗口中依次执行)
+## 第二步：首次安装 (如果服务器还没下载过游戏)
 
+**如果你是第一次部署，或者之前部署失败了，请执行这一步。**
 请**一行一行**复制下面的命令，粘贴到黑色窗口中并回车：
 
 ### 1. 准备环境并下载代码
 ```bash
-# 进入用户主目录 (确保有权限)
+# 1. 回到用户主目录
 cd ~
 
-# 安装 git (如果已安装会提示 Nothing to do)
+# 2. 安装 git (如果已安装会提示 Nothing to do)
 sudo yum install -y git
 
-# 拉取你的游戏代码
+# 3. 拉取你的游戏代码
 git clone https://github.com/chengzishigechengzi/snake-game.git
 
-# 进入游戏文件夹
+# 4. 进入游戏文件夹
 cd snake-game
-``````
+```
 
 ### 2. 安装依赖并启动
 ```bash
-# 安装项目依赖 (可能需要几十秒)
+# 1. 安装项目依赖 (可能需要几十秒)
 npm install
 
-# 安装后台运行工具 PM2
-npm install -g pm2
+# 2. 安装后台运行工具 PM2 (如果报错 Permission denied 请加 sudo)
+sudo npm install -g pm2
 
-# 启动游戏！
+# 3. 启动游戏！
 pm2 start server.js --name "snake-game"
 ```
 
@@ -46,7 +47,24 @@ pm2 start server.js --name "snake-game"
 
 ---
 
-## 第三步：开放端口 (最重要的一步！)
+## 第三步：日常更新 (如果游戏已经安装好了)
+
+**当你修改了代码并 push 到 GitHub 后，只需要执行这一步来更新服务器。**
+
+```bash
+# 1. 进入游戏目录
+cd ~/snake-game
+
+# 2. 拉取最新代码
+git pull
+
+# 3. 重启游戏服务
+pm2 restart snake-game
+```
+
+---
+
+## 第四步：开放端口 (最重要的一步！)
 阿里云默认是锁住端口的，必须手动打开才能让别人访问。
 
 1. 回到阿里云网页控制台。
@@ -61,7 +79,7 @@ pm2 start server.js --name "snake-game"
 
 ---
 
-## 第四步：开始游戏！
+## 第五步：开始游戏！
 现在，你的游戏已经上线了！
 
 **游戏链接**：

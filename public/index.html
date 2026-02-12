@@ -99,8 +99,27 @@
         @keyframes fadeinout {
             0% { opacity: 0; transform: translateX(20px); }
             10% { opacity: 1; transform: translateX(0); }
-            80% { opacity: 1; }
+            90% { opacity: 1; }
             100% { opacity: 0; }
+        }
+
+        #toast {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(196, 2, 255, 0.6);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 2000;
+        }
+        #toast.show {
+            opacity: 1;
         }
 
         /* Controls */
@@ -285,6 +304,7 @@
         <ul id="leaderboard-list"></ul>
     </div>
     
+    <div id="toast"></div>
     <div id="kill-feed"></div>
     <div id="notification"></div>
 
@@ -561,6 +581,20 @@
     
     socket.on('highscore_update', (scores) => {
         updateHighScoreUI(scores);
+    });
+
+    let toastTimeout;
+    socket.on('show_toast', (data) => {
+        const t = document.getElementById('toast');
+        if (!t) return;
+        
+        if (toastTimeout) clearTimeout(toastTimeout);
+
+        t.innerText = data.message;
+        t.classList.add('show');
+        toastTimeout = setTimeout(() => {
+            t.classList.remove('show');
+        }, data.duration || 1000);
     });
 
     socket.on('state', (state) => {

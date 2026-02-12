@@ -957,6 +957,8 @@ setInterval(() => {
                         p.score += 10;
                         p.poisoned = 3000; // 3s Poison
                         io.emit('play_sound', { id: p.id, type: 'poison' });
+                        // Notify client to show toast
+                        io.to(p.id).emit('show_toast', { message: '你中毒了', duration: 1000 });
                     } else { // Normal
                         p.score += 10;
                         io.emit('play_sound', { id: p.id, type: 'eat' });
