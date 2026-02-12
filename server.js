@@ -18,8 +18,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Constants ---
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
-const TILE_COUNT_X = 60;
-const TILE_COUNT_Y = 40;
+const TILE_COUNT_X = 100; // Increase map size
+const TILE_COUNT_Y = 100; // Increase map size
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -207,7 +207,7 @@ function getUniquePlayerColor() {
     return `hsl(${hue}, 70%, 50%)`;
 }
 
-spawnFood(26);
+spawnFood(100);
 
 // --- AI System ---
 class AISnake {
@@ -217,7 +217,26 @@ class AISnake {
     }
 
     reset() {
-        this.snake = [getRandomPosition()];
+        // Try to find a safe spawn position (not on a player)
+        let pos;
+        let valid = false;
+        let attempts = 0;
+        
+        while (!valid && attempts < 50) {
+            pos = getRandomPosition();
+            valid = true;
+            // Check Players
+            for (let pid in players) {
+                if (players[pid].snake.some(s => s.x === pos.x && s.y === pos.y)) { 
+                    valid = false; 
+                    break; 
+                }
+            }
+            attempts++;
+        }
+        if (!valid) pos = getRandomPosition(); // Fallback
+
+        this.snake = [pos];
         this.velocity = { x: 0, y: 0 };
         this.score = 5 + Math.floor(Math.random() * 5); // Start with some length
         // Grow snake to initial score
@@ -554,13 +573,13 @@ class AISnake {
         // Speed Logic
         // Reverted to 1.5 threshold for slower speed (20% slower than boosted state)
         
-        let threshold = 1.5;
-        if (this.rageMode) threshold = 1.2; 
-        if (this.speedBoost) threshold = 0.6;
+        let threshold = 5.0; // Slow speed (Target 6 moves/sec)
+        if (this.rageMode) threshold = 4.0; 
+        if (this.speedBoost) threshold = 2.5;
 
         this.moveTick++;
         if (this.moveTick >= threshold) {
-            this.moveTick = 0;
+            this.moveTick -= threshold; // Fix: Subtract to keep decimal precision
             this.move();
         }
     }
@@ -594,6 +613,9 @@ class AISnake {
             if (p.isDead) continue;
             // Head hit Player Body
             if (p.snake.some(s => s.x === head.x && s.y === head.y)) {
+                // If Safe, Ghost Mode -> Pass through
+                if (this.spawnSafeTimer > 0) return;
+
                 this.die(p); // Player killed AI
                 return;
             }
@@ -664,7 +686,7 @@ class AISnake {
 }
 
 // Initialize AIs
-for(let i=0; i<5; i++) aiSnakes.push(new AISnake());
+for(let i=0; i<20; i++) aiSnakes.push(new AISnake());
 
 
 // --- Player Logic ---
@@ -703,9 +725,9 @@ function initPlayer(socket) {
         io.emit('play_sound', { id: this.id, type: 'die' });
         
         // Drop food where body was
-        // Drop rate: 50% of body segments become food
+        // Drop rate: 20% of body segments become food
         this.snake.forEach((s, index) => {
-            if (Math.random() < 0.5) {
+            if (Math.random() < 0.2) {
                 // Randomize food type
                 let type = 0; // Normal
                 let r = Math.random();
@@ -873,12 +895,12 @@ setInterval(() => {
         // Base Speed 30% faster -> means threshold is lower.
         // Standard was 2. Let's make it 1.5? (Alternating 1 and 2 ticks)
         // Boost = 1.
-        let threshold = 1.5; 
-        if (p.speedBoost) threshold = 0.6; // Even faster boost (was 0.8)
+        let threshold = 5.0; // Slow speed
+        if (p.speedBoost) threshold = 2.5; 
         
-        // Poison Effect: Speed 50% of Normal (Normal is 1.5 threshold -> 3.0 threshold)
+        // Poison Effect
         if (p.poisoned > 0) {
-            threshold = 3.0;
+            threshold = 10.0; 
         }
         
         if (p.moveTick >= threshold) {
@@ -908,6 +930,9 @@ setInterval(() => {
                 // AI
                 for (let ai of aiSnakes) {
                     if (ai.isDead) continue;
+                    // If AI is in spawn safe mode, it is a ghost - no collision
+                    if (ai.spawnSafeTimer > 0) continue;
+                    
                     if (ai.snake.some(s => s.x === head.x && s.y === head.y)) collision = true;
                 }
             }
@@ -988,5 +1013,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} (v2-SlowSpeed)`);
 });
