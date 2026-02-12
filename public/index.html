@@ -948,6 +948,13 @@
         renderAIs.forEach(ai => {
             if (ai.isDead) return;
             
+            // Check Spawn Safe State (Transparency)
+            if (ai.spawnSafe) {
+                ctx.globalAlpha = 0.5;
+            } else {
+                ctx.globalAlpha = 1.0;
+            }
+            
             // Use same rendering style as players
             // No Rage Glow, No Special Borders, just color
             // Always use Dark Blue (ignore rage mode red)
@@ -1000,6 +1007,9 @@
                 ctx.fillText(ai.name || 'AI', px + gridSize/2, py - 4);
                 ctx.restore();
             }
+            
+            // Reset Alpha
+            ctx.globalAlpha = 1.0;
         });
         
         // Particles

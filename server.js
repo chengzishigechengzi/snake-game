@@ -17,7 +17,7 @@ const io = new Server(server, {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Constants ---
-const GRID_SIZE = 20;
+const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 60;
 const TILE_COUNT_Y = 40;
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
@@ -234,6 +234,7 @@ class AISnake {
         this.speedBoost = false;
         this.boostCooldown = 0;
         this.boostDuration = 0;
+        this.spawnSafeTimer = 5000; // 5s safe time on spawn
         
         // Give initial random velocity to prevent being stuck
         const dirs = [{x:1,y:0}, {x:-1,y:0}, {x:0,y:1}, {x:0,y:-1}];
@@ -277,6 +278,10 @@ class AISnake {
 
     update() {
         if (this.isDead) return;
+        
+        if (this.spawnSafeTimer > 0) {
+            this.spawnSafeTimer -= 1000 / TICK_RATE; // Decrement by tick duration
+        }
 
         // Rage Mode Check: Length > Player 50%
         // Find max player length
@@ -547,14 +552,11 @@ class AISnake {
         if (nextMove) this.velocity = nextMove;
         
         // Speed Logic
-        // Match Player Speed Exactly
-        // Standard: 1.5
-        // Boost: 0.6
-        // Update: Increased speed by 20% (Threshold 1.5 -> 1.2)
+        // Reverted to 1.5 threshold for slower speed (20% slower than boosted state)
         
-        let threshold = 1.2;
-        if (this.rageMode) threshold = 1.0; // Rage slightly faster
-        if (this.speedBoost) threshold = 0.5;
+        let threshold = 1.5;
+        if (this.rageMode) threshold = 1.2; 
+        if (this.speedBoost) threshold = 0.6;
 
         this.moveTick++;
         if (this.moveTick >= threshold) {
@@ -599,6 +601,11 @@ class AISnake {
             if (p.snake[0].x === head.x && p.snake[0].y === head.y) {
                  if (this.score >= p.score) {
                      // AI wins or tie
+                     // Check safe timer
+                     if (this.spawnSafeTimer > 0) {
+                         // Pass through / Ignore if in safe mode
+                         return;
+                     }
                      if (p.invulnerable <= 0) {
                          p.die();
                      }
@@ -737,11 +744,9 @@ function initPlayer(socket) {
         let added = Math.floor(currentLen * 0.3);
         this.score += added * 10;
         
-        // 3s Invulnerable (Reduced from 5s)
-        this.invulnerable = 3000;
-        
-        // 10s Magnet
-        this.magnet = 10000;
+        // Sync Magnet and Invulnerability to 5s (5000ms)
+        this.invulnerable = 5000;
+        this.magnet = 5000;
         
         io.emit('play_sound', { id: this.id, type: 'kill_ai' });
     };
@@ -877,7 +882,7 @@ setInterval(() => {
         }
         
         if (p.moveTick >= threshold) {
-            p.moveTick = 0;
+            p.moveTick -= threshold;
             if (p.nextVelocity.x !== 0 || p.nextVelocity.y !== 0) p.velocity = p.nextVelocity;
             if (p.velocity.x === 0 && p.velocity.y === 0) continue;
 
@@ -973,7 +978,8 @@ setInterval(() => {
             rageMode: ai.rageMode,
             color: ai.color,
             name: ai.name,
-            velocity: ai.velocity
+            velocity: ai.velocity,
+            spawnSafe: ai.spawnSafeTimer > 0 // Send safe state
         })),
         topPlayerId: topPlayerId
     });
