@@ -36,6 +36,7 @@ const TILE_COUNT_Y = 100; // Increase map size
 const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
 const AUTO_FOOD_LIMIT = Math.floor(TOTAL_TILES * 0.01); // 1% Upper limit (100 items)
 const AUTO_FOOD_FLOOR = Math.floor(TOTAL_TILES * 0.005); // 0.5% Lower limit (50 items)
+const MAX_FOOD_TOTAL = Math.floor(TOTAL_TILES * 0.05); // 5% Absolute Hard Limit (500 items)
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -228,6 +229,8 @@ function getUniquePlayerColor() {
 }
 
 function spawnSpecificFood(x, y, type = 0) {
+    // Respect the absolute hard limit to prevent "crowded" maps from death drops
+    if (foodItems.length >= MAX_FOOD_TOTAL) return;
     foodItems.push({ x, y, type });
 }
 
@@ -673,7 +676,10 @@ class AISnake {
                 this.score += 10;
                 foodItems.splice(i, 1);
                 ate = true;
-                spawnFood(1);
+                // AI eating also respects the floor limit
+                if (foodItems.length < AUTO_FOOD_FLOOR) {
+                    spawnFood(1);
+                }
                 break;
             }
         }
@@ -866,10 +872,18 @@ io.on('connection', (socket) => {
 
 // Game Loop
 let lastTime = Date.now();
+let logTimer = 0;
 setInterval(() => {
     let now = Date.now();
     let dt = now - lastTime;
     lastTime = now;
+
+    // Monitor food count every 5 seconds
+    logTimer += dt;
+    if (logTimer >= 5000) {
+        console.log(`[Monitor] Current Food Count: ${foodItems.length} (Limit: ${AUTO_FOOD_LIMIT}, HardMax: ${MAX_FOOD_TOTAL})`);
+        logTimer = 0;
+    }
 
     // 1. Update AI
     aiSnakes.forEach(ai => ai.update());
