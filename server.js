@@ -33,6 +33,8 @@ app.use(express.static(path.join(__dirname, 'public'), {
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
+const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
+const AUTO_FOOD_LIMIT = Math.floor(TOTAL_TILES * 0.20); // 20% limit for automatic spawning
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -128,11 +130,12 @@ function getRandomPosition() {
     };
 }
 
-function spawnFood(count = 1) {
+function spawnFood(count = 1, force = false) {
+    if (!force && foodItems.length >= AUTO_FOOD_LIMIT) return;
+
     for (let i = 0; i < count; i++) {
-        let pos;
-        let attempts = 0;
-        let valid = false;
+        // Double check limit if not forced
+        if (!force && foodItems.length >= AUTO_FOOD_LIMIT) break;
         
         // Food Types:
         // 0: Normal (Default)
@@ -221,6 +224,11 @@ function getUniquePlayerColor() {
     return `hsl(${hue}, 70%, 50%)`;
 }
 
+function spawnSpecificFood(x, y, type = 0) {
+    foodItems.push({ x, y, type });
+}
+
+// Initial food spawn
 spawnFood(100);
 
 // --- AI System ---
@@ -681,9 +689,15 @@ class AISnake {
     
     die(killer = null) {
         this.isDead = true;
-        // Drop food
+        // Drop food: 50% of body segments become food, NO LIMIT
         this.snake.forEach((s, i) => {
-             if (i % 2 === 0) foodItems.push(s);
+             if (i % 2 === 0) {
+                 let type = 0;
+                 let r = Math.random();
+                 if (r < 0.1) type = 1; // Big
+                 else if (r < 0.2) type = 2; // Poison
+                 spawnSpecificFood(s.x, s.y, type);
+             }
         });
         
         // Killer Reward
@@ -738,21 +752,17 @@ function initPlayer(socket) {
         this.isDead = true;
         io.emit('play_sound', { id: this.id, type: 'die' });
         
-        // Drop food where body was
-        // Drop rate: 20% of body segments become food
+        // Drop food where body was, NO LIMIT
+        // Drop rate: 50% of body segments become food
         this.snake.forEach((s, index) => {
-            if (Math.random() < 0.2) {
+            if (index % 2 === 0) {
                 // Randomize food type
                 let type = 0; // Normal
                 let r = Math.random();
-                if (r < 0.1) type = 1; // Big (rare from body)
-                else if (r < 0.2) type = 2; // Poison (rare from body)
+                if (r < 0.2) type = 1; // Big 
+                else if (r < 0.4) type = 2; // Poison 
                 
-                foodItems.push({
-                    x: s.x,
-                    y: s.y,
-                    type: type
-                });
+                spawnSpecificFood(s.x, s.y, type);
             }
         });
     };
