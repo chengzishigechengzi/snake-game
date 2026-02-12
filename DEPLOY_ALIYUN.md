@@ -17,18 +17,18 @@
 
 ### 1. 准备环境并下载代码
 ```bash
-# 进入目录
-cd /home
+# 进入用户主目录 (确保有权限)
+cd ~
 
-# 安装 git (如果没有的话)
-yum install -y git
+# 安装 git (如果已安装会提示 Nothing to do)
+sudo yum install -y git
 
-# 拉取你的游戏代码 (已替换为你的仓库地址)
+# 拉取你的游戏代码
 git clone https://github.com/chengzishigechengzi/snake-game.git
 
 # 进入游戏文件夹
 cd snake-game
-```
+``````
 
 ### 2. 安装依赖并启动
 ```bash
