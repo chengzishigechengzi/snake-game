@@ -690,15 +690,15 @@ class AISnake {
     die(killer = null) {
         this.isDead = true;
         // Drop food: 50% of body segments become food, NO LIMIT
-        this.snake.forEach((s, i) => {
-             if (i % 2 === 0) {
-                 let type = 0;
-                 let r = Math.random();
-                 if (r < 0.1) type = 1; // Big
-                 else if (r < 0.2) type = 2; // Poison
-                 spawnSpecificFood(s.x, s.y, type);
-             }
-        });
+          this.snake.forEach((s, i) => {
+               if (i % 2 === 0) {
+                   let type = 0;
+                   let r = Math.random();
+                   if (r < 0.2) type = 1; // Big (20%)
+                   else type = 0; // Normal (80%) - NO POISON
+                   spawnSpecificFood(s.x, s.y, type);
+               }
+          });
         
         // Killer Reward
         if (killer) {
@@ -759,8 +759,8 @@ function initPlayer(socket) {
                 // Randomize food type
                 let type = 0; // Normal
                 let r = Math.random();
-                if (r < 0.2) type = 1; // Big 
-                else if (r < 0.4) type = 2; // Poison 
+                if (r < 0.3) type = 1; // Big (30%)
+                else type = 0; // Normal (70%) - NO POISON
                 
                 spawnSpecificFood(s.x, s.y, type);
             }
