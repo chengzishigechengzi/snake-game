@@ -34,9 +34,9 @@ const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
 const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
-const AUTO_FOOD_LIMIT = 400; // Upper limit
-const AUTO_FOOD_FLOOR = 200; // Initial and floor limit (User requested 200)
-const MAX_FOOD_TOTAL = 1000; // Absolute Hard Limit
+const AUTO_FOOD_LIMIT = 1000; // Fixed 1000 items
+const AUTO_FOOD_FLOOR = 1000; // Fixed 1000 items to maintain count
+const MAX_FOOD_TOTAL = 2000; // Allow some extra for death drops but keep it controlled
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -676,9 +676,9 @@ class AISnake {
                 this.score += 10;
                 foodItems.splice(i, 1);
                 ate = true;
-                // AI eating also respects the floor limit
+                // Maintain exactly 1000 items
                 if (foodItems.length < AUTO_FOOD_FLOOR) {
-                    spawnFood(1);
+                    spawnFood(AUTO_FOOD_FLOOR - foodItems.length);
                 }
                 break;
             }
@@ -1006,9 +1006,9 @@ setInterval(() => {
                     
                     foodItems.splice(i, 1);
                     ate = true;
-                    // Auto-refill ONLY if we fall below the 10% floor
+                    // Maintain exactly 1000 items
                     if (foodItems.length < AUTO_FOOD_FLOOR) {
-                        spawnFood(1);
+                        spawnFood(AUTO_FOOD_FLOOR - foodItems.length);
                     }
                     break;
                 }
@@ -1083,7 +1083,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-  foodItems = []; // Force clear on start
-  spawnFood(AUTO_FOOD_FLOOR, true);
-  console.log(`Server running on port ${PORT} (v1.1.2-Clean)`);
+  console.log(`Server running on port ${PORT} (v2-SlowSpeed)`);
 });
