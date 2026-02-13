@@ -30,7 +30,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // --- Constants ---
-const VERSION = 'v1.1.5';
+const VERSION = 'v1.1.6';
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
