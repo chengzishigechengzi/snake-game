@@ -301,7 +301,7 @@
         <div>得分: <span id="score-val">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 2px;">延迟: <span id="ping-val" style="color:#0f0">0</span>ms</div>
-        <div id="version-tag" style="font-size: 11px; color: #00ff00; margin-top: 5px; font-weight: bold; padding: 2px 5px; border: 1px solid #00ff00; border-radius: 3px; display: inline-block;">v1.1.3</div>
+        <div id="version-tag" style="font-size: 11px; color: #00ff00; margin-top: 5px; font-weight: bold; padding: 2px 5px; border: 1px solid #00ff00; border-radius: 3px; display: inline-block;">v1.1.4</div>
     </div>
     
     <div id="leaderboard" class="hud-panel">
@@ -587,7 +587,7 @@
         tileCountY = data.tileCountY;
         
         // Version Check
-         const clientVersion = 'v1.1.3';
+         const clientVersion = 'v1.1.4';
          if (data.version && data.version !== clientVersion) {
             console.error('Version mismatch! Server:', data.version, 'Client:', clientVersion);
             alert('游戏已更新到 ' + data.version + '，请刷新页面以加载最新代码！');
@@ -616,6 +616,15 @@
         }, data.duration || 1000);
     });
 
+    socket.on('die', (data) => {
+        if (deadScreen.classList.contains('hidden')) {
+            finalScoreVal.textContent = data.score || 0;
+            deadScreen.classList.remove('hidden');
+            socket.emit('get_highscores');
+            playSound('die');
+        }
+    });
+
     socket.on('state', (state) => {
         // Shift state
         prevState = currState;
@@ -639,13 +648,6 @@
             
             scoreVal.textContent = me.score;
             aiCountVal.textContent = aiSnakes.length;
-
-            if (me.isDead && deadScreen.classList.contains('hidden') && menuScreen.classList.contains('hidden')) {
-                finalScoreVal.textContent = me.score;
-                deadScreen.classList.remove('hidden');
-                // Force fetch high scores on death screen show
-                socket.emit('get_highscores');
-            }
         }
     });
     

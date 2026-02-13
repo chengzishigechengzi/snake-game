@@ -30,7 +30,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // --- Constants ---
-const VERSION = 'v1.1.3';
+const VERSION = 'v1.1.4';
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
@@ -761,13 +761,20 @@ function initPlayer(socket) {
     
     // Attach helper to object (monkey patch style for simplicity in this file)
     players[socket.id].die = function() {
+        if (this.isDead) return; // Prevent double death
+        
         // Update High Score on Death
         updateHighScores(this);
         
-        // Force sync High Scores to this player (so they see the board even if they didn't break the record)
+        // Force sync High Scores to this player
         socket.emit('highscore_update', highScores);
+        // Explicit death event for client UI
+        socket.emit('die', { score: this.score });
         
         this.isDead = true;
+        this.velocity = { x: 0, y: 0 };
+        this.nextVelocity = { x: 0, y: 0 };
+        
         io.emit('play_sound', { id: this.id, type: 'die' });
         
         // Drop food where body was, NO LIMIT
@@ -963,8 +970,10 @@ setInterval(() => {
             let collision = false;
             let killer = null;
             if (p.invulnerable <= 0) {
-                // Self
-                if (p.snake.some(s => s.x === head.x && s.y === head.y)) collision = true;
+                // Self (Relaxed to 0.8)
+                if (p.snake.some((s, idx) => idx > 0 && Math.abs(s.x - head.x) < 0.8 && Math.abs(s.y - head.y) < 0.8)) {
+                    collision = true;
+                }
                 
                 // Others (Players)
                 if (!collision) {
@@ -972,22 +981,22 @@ setInterval(() => {
                         let other = players[otherId];
                         if (other.id === p.id || other.isDead) continue;
                         
-                        // Head to Head
-                        if (other.snake[0].x === head.x && other.snake[0].y === head.y) {
+                        // Head to Head (Relaxed to 0.8)
+                        if (Math.abs(other.snake[0].x - head.x) < 0.8 && Math.abs(other.snake[0].y - head.y) < 0.8) {
                             if (p.score < other.score) {
                                 collision = true;
                                 killer = other;
                             } else if (p.score > other.score) {
                                 other.die(); // We kill them
                             } else {
-                                collision = true; // Tie, we both die (other dies in their tick or we force it)
+                                collision = true; // Tie, we both die
                                 other.die();
                             }
                             break;
                         }
                         
-                        // Head to Body
-                        if (other.snake.some(s => s.x === head.x && s.y === head.y)) {
+                        // Head to Body (Relaxed to 0.8)
+                        if (other.snake.some(s => Math.abs(s.x - head.x) < 0.8 && Math.abs(s.y - head.y) < 0.8)) {
                             collision = true;
                             killer = other;
                             break;
@@ -1073,16 +1082,21 @@ setInterval(() => {
 
     for (let id in players) {
         const p = players[id];
-        if (p.isDead) continue;
-
-        const head = p.snake[0];
+        // Even dead players need the state to see the game over screen or spectate
+        
+        // If dead, we use their last known head position for AOI (Area of Interest)
+        // If they just connected and haven't moved, use random pos or 0,0
+        const head = (p.snake && p.snake.length > 0) ? p.snake[0] : {x: TILE_COUNT_X/2, y: TILE_COUNT_Y/2};
         
         // Filter entities within view distance
         const visiblePlayers = {};
         for (let otherId in players) {
             const other = players[otherId];
-            if (other.isDead) continue;
-            const otherHead = other.snake[0];
+            if (other.isDead && other.id !== p.id) continue; // Don't show OTHER dead players, but show self if dead
+            
+            const otherHead = (other.snake && other.snake.length > 0) ? other.snake[0] : null;
+            if (!otherHead) continue;
+
             if (Math.abs(otherHead.x - head.x) < VIEW_DISTANCE && Math.abs(otherHead.y - head.y) < VIEW_DISTANCE) {
                 visiblePlayers[otherId] = {
                     id: other.id,
