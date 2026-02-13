@@ -127,15 +127,14 @@
         }
 
         /* Controls */
-        /* Make joystick zone cover the entire left half for better touch response */
+        /* Revert to classic fixed box for joystick */
         #joystick-zone { 
             position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 50%; 
-            height: 100%; 
+            bottom: 50px; 
+            left: 50px; 
+            width: 150px; 
+            height: 150px; 
             z-index: 10; 
-            /* background: rgba(255,0,0,0.1); Debug */
         }
         
         #boost-btn { position: absolute; bottom: 60px; right: 60px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 14px; color: white; z-index: 10; transition: all 0.1s; }
@@ -311,7 +310,7 @@
         <div>得分: <span id="score-val">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 2px;">延迟: <span id="ping-val" style="color:#0f0">0</span>ms</div>
-        <div id="version-tag" style="font-size: 11px; color: #00ff00; margin-top: 5px; font-weight: bold; padding: 2px 5px; border: 1px solid #00ff00; border-radius: 3px; display: inline-block;">v1.1.7</div>
+        <div id="version-tag" style="font-size: 11px; color: #00ff00; margin-top: 5px; font-weight: bold; padding: 2px 5px; border: 1px solid #00ff00; border-radius: 3px; display: inline-block;">v1.1.8</div>
     </div>
     
     <div id="leaderboard" class="hud-panel">
@@ -603,7 +602,7 @@
         tileCountY = data.tileCountY;
         
         // Version Check
-         const clientVersion = 'v1.1.7';
+         const clientVersion = 'v1.1.8';
          if (data.version && data.version !== clientVersion) {
             console.error('Version mismatch! Server:', data.version, 'Client:', clientVersion);
             alert('游戏已更新到 ' + data.version + '，请刷新页面以加载最新代码！');
@@ -633,16 +632,17 @@
     });
 
     socket.on('die', (data) => {
-        if (deadScreen.classList.contains('hidden')) {
-            finalScoreVal.textContent = data.score || 0;
-            deadScreen.classList.remove('hidden');
-            // Hide Controls
-            document.getElementById('joystick-zone').style.display = 'none';
-            document.getElementById('boost-btn').style.display = 'none';
-            
-            socket.emit('get_highscores');
-            playSound('die');
-        }
+        console.log('DIE EVENT:', data);
+        // Always show death screen, even if it thinks it's already shown
+        finalScoreVal.textContent = data.score || 0;
+        deadScreen.classList.remove('hidden');
+        
+        // Hide Controls
+        document.getElementById('joystick-zone').style.display = 'none';
+        document.getElementById('boost-btn').style.display = 'none';
+        
+        socket.emit('get_highscores');
+        playSound('die');
     });
 
     socket.on('state', (state) => {
@@ -746,7 +746,7 @@
     const manager = nipplejs.create({
         zone: document.getElementById('joystick-zone'),
         mode: 'static', // Back to static so it's visible
-        position: { left: '50%', top: '80%' }, // Bottom-center of the left zone
+        position: { left: '50%', top: '50%' }, // Center of the box (Classic)
         color: 'white',
         size: 100
     });
