@@ -4,3 +4,4 @@ node_modules
 temp_key
 temp_key.pub
 .vercel
+highscores.json
