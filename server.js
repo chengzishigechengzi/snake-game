@@ -30,13 +30,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // --- Constants ---
-const VERSION = 'v1.1.4';
+const VERSION = 'v1.1.5';
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
 const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
-const AUTO_FOOD_LIMIT = 600; // 6% density
-const AUTO_FOOD_FLOOR = 400; // 4% floor
+const AUTO_FOOD_LIMIT = 400; // Reduced from 600
+const AUTO_FOOD_FLOOR = 300; // Reduced from 400
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -232,9 +232,16 @@ function spawnSpecificFood(x, y, type) {
     // Basic boundary check
     if (x < 0 || x >= TILE_COUNT_X || y < 0 || y >= TILE_COUNT_Y) return;
     
+    // Hard cap total food to prevent performance issues
+    if (foodItems.length >= 600) {
+        // Option 1: Don't spawn
+        // return; 
+        
+        // Option 2: Remove oldest (better for gameplay flow)
+        foodItems.shift();
+    }
+    
     foodItems.push({ x, y, type });
-    // Keep it sane (e.g. max 1000 items total)
-    if (foodItems.length > 1000) foodItems.shift();
 }
 
 // Initial food spawn: Start with 10% density
