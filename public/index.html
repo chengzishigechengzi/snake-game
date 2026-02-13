@@ -250,7 +250,8 @@
         }
         */
 
-        /* Force Landscape via CSS Rotation */
+        /* Force Landscape via CSS Rotation - REMOVED for v1.1.9 Classic Restoration */
+        /*
         @media screen and (orientation: portrait) and (max-width: 900px) {
             body {
                 width: 100vw;
@@ -266,32 +267,8 @@
                 transform: translate(-50%, -50%) rotate(90deg);
                 transform-origin: center center;
             }
-            
-            /* Adjust Joystick for rotated view if needed? 
-               Since container is rotated, joystick is also rotated relative to screen.
-               User holds phone sideways -> Visual Bottom Left is "Correct".
-               So Joystick should be at "Visual Bottom Left".
-               In unrotated container (Logic Space): Bottom Left.
-               In rotated container (Screen Space): 
-               Top Left of Phone (if rotated 90deg CW) or Bottom Right?
-               
-               Let's trace:
-               Phone is Portrait. Top is Up.
-               Rotate 90deg (Clockwise).
-               Container Top is now Screen Right.
-               Container Right is Screen Bottom.
-               Container Bottom is Screen Left.
-               Container Left is Screen Top.
-               
-               Joystick is at "Container Bottom Left".
-               Container Bottom Left -> Screen Top Left.
-               
-               If user rotates phone 90deg CW to match:
-               Phone Top becomes Right.
-               Screen Top Left becomes "Top Left" relative to user's eyes.
-               So it should work naturally!
-            */
         }
+        */
     </style>
 </head>
 <body>
@@ -310,7 +287,7 @@
         <div>得分: <span id="score-val">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 2px;">延迟: <span id="ping-val" style="color:#0f0">0</span>ms</div>
-        <div id="version-tag" style="font-size: 11px; color: #00ff00; margin-top: 5px; font-weight: bold; padding: 2px 5px; border: 1px solid #00ff00; border-radius: 3px; display: inline-block;">v1.1.8</div>
+        <div id="version-tag" style="font-size: 11px; color: #00ff00; margin-top: 5px; font-weight: bold; padding: 2px 5px; border: 1px solid #00ff00; border-radius: 3px; display: inline-block;">v1.1.9</div>
     </div>
     
     <div id="leaderboard" class="hud-panel">
@@ -602,7 +579,7 @@
         tileCountY = data.tileCountY;
         
         // Version Check
-         const clientVersion = 'v1.1.8';
+         const clientVersion = 'v1.1.9';
          if (data.version && data.version !== clientVersion) {
             console.error('Version mismatch! Server:', data.version, 'Client:', clientVersion);
             alert('游戏已更新到 ' + data.version + '，请刷新页面以加载最新代码！');
@@ -758,13 +735,15 @@
         else if (angle >= 225 && angle < 315) { x = 0; y = 1; }
         else { x = 1; y = 0; }
 
-        // Fix for CSS Rotation in Portrait Mode
+        // Fix for CSS Rotation in Portrait Mode - REMOVED for v1.1.9 Classic Restoration
+        /*
         if (window.innerHeight > window.innerWidth && window.innerWidth <= 900) {
             let oldX = x;
             let oldY = y;
             x = oldY;
             y = -oldX;
         }
+        */
 
         sendInput(x, y);
     });
@@ -781,21 +760,10 @@
 
     function resizeCanvas() {
         // Detect if we are in "Forced Landscape" (Portrait Mode on Mobile)
-        // In this case, CSS swaps width/height, so Canvas should match CONTAINER size
-        // But window.innerWidth is still "Portrait Width" (Short)
+        // REMOVED for v1.1.9 Classic Restoration
         
-        // However, we set #game-container width to 100vh and height to 100vw in CSS
-        // So we should use window.innerHeight for Width, and innerWidth for Height
-        
-        const isPortrait = window.matchMedia("(orientation: portrait) and (max-width: 900px)").matches;
-        
-        if (isPortrait) {
-            canvas.width = window.innerHeight;
-            canvas.height = window.innerWidth;
-        } else {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
     }
     window.addEventListener('resize', resizeCanvas);
     // Call once to init
