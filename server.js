@@ -30,13 +30,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // --- Constants ---
-const VERSION = 'v1.1.6';
+const VERSION = 'v1.1.7';
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
 const TOTAL_TILES = TILE_COUNT_X * TILE_COUNT_Y;
-const AUTO_FOOD_LIMIT = 400; // Reduced from 600
-const AUTO_FOOD_FLOOR = 300; // Reduced from 400
+const AUTO_FOOD_LIMIT = 300; // Further reduced from 400
+const AUTO_FOOD_FLOOR = 200; // Further reduced from 300
 const TICK_RATE = 30; // Optimized for 30Hz (Smoother)
 const TICK_MS = 1000 / TICK_RATE;
 
@@ -233,7 +233,7 @@ function spawnSpecificFood(x, y, type) {
     if (x < 0 || x >= TILE_COUNT_X || y < 0 || y >= TILE_COUNT_Y) return;
     
     // Hard cap total food to prevent performance issues
-    if (foodItems.length >= 600) {
+    if (foodItems.length >= 400) { // Reduced from 600
         // Option 1: Don't spawn
         // return; 
         
@@ -784,10 +784,10 @@ function initPlayer(socket) {
         
         io.emit('play_sound', { id: this.id, type: 'die' });
         
-        // Drop food where body was, NO LIMIT
-        // Drop rate: 50% of body segments become food
+        // Drop food where body was
+        // Drop rate: 33% of body segments become food (Reduced from 50%)
         this.snake.forEach((s, index) => {
-            if (index % 2 === 0) {
+            if (index % 3 === 0) {
                 // Randomize food type
                 let type = 0; // Normal
                 let r = Math.random();
