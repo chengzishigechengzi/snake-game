@@ -301,7 +301,7 @@
         <div>得分: <span id="score-val">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 5px;">AI数量: <span id="ai-count">0</span></div>
         <div style="font-size: 10px; color: #888; margin-top: 2px;">延迟: <span id="ping-val" style="color:#0f0">0</span>ms</div>
-        <div id="version-tag" style="font-size: 11px; color: #00ff00; margin-top: 5px; font-weight: bold; padding: 2px 5px; border: 1px solid #00ff00; border-radius: 3px; display: inline-block;">v1.1.2</div>
+        <div id="version-tag" style="font-size: 11px; color: #00ff00; margin-top: 5px; font-weight: bold; padding: 2px 5px; border: 1px solid #00ff00; border-radius: 3px; display: inline-block;">v1.1.3</div>
     </div>
     
     <div id="leaderboard" class="hud-panel">
@@ -532,6 +532,7 @@
         // --- 2. Calculate Interpolation Factor ---
         // Clamp t to [0, 1] for ALL segments to ensure body doesn't separate from head
         // and doesn't overshoot. 
+        // Allow slight overshoot (1.2) for smoother movement if latency is high? No, causes disconnect.
         const clampedT = Math.min(Math.max(t, 0), 1.0);
 
         return currSnake.map((segment, i) => {
@@ -541,11 +542,10 @@
             // Distance check (for wrapping or respawning)
             const dx = Math.abs(segment.x - prevSeg.x);
             const dy = Math.abs(segment.y - prevSeg.y);
-            if (dx > 1.1 || dy > 1.1) return segment;
+            // If jump is too large (e.g. respawn or wrap), do not interpolate
+            if (dx > 2 || dy > 2) return segment;
             
             // --- 3. Position Calculation ---
-            // For both Head and Body, we use the SAME clampedT.
-            // This ensures the snake "skeleton" stays perfectly connected.
             return {
                 x: lerp(prevSeg.x, segment.x, clampedT),
                 y: lerp(prevSeg.y, segment.y, clampedT)
@@ -587,7 +587,7 @@
         tileCountY = data.tileCountY;
         
         // Version Check
-         const clientVersion = 'v1.1.2';
+         const clientVersion = 'v1.1.3';
          if (data.version && data.version !== clientVersion) {
             console.error('Version mismatch! Server:', data.version, 'Client:', clientVersion);
             alert('游戏已更新到 ' + data.version + '，请刷新页面以加载最新代码！');

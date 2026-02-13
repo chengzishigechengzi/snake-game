@@ -22,8 +22,10 @@ sudo cp -rf $BACKUP_DIR/* $PROJECT_DIR/
 
 # 4. 清理旧进程并重启
 echo ">>> [3/4] 正在清理旧进程并释放端口..."
-pm2 delete all 2>/dev/null
-sudo fuser -k 8080/tcp 2>/dev/null
+# 暴力清理：杀死所有 node 进程（确保没有僵尸进程）
+sudo pkill -f node || true
+sudo fuser -k 8080/tcp || true
+pm2 delete all || true
 
 echo ">>> [4/4] 正在启动新版本..."
 cd $PROJECT_DIR

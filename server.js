@@ -30,7 +30,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // --- Constants ---
-const VERSION = 'v1.1.2';
+const VERSION = 'v1.1.3';
 const GRID_SIZE = 25; // Increase grid size to zoom in (reduce view range)
 const TILE_COUNT_X = 100; // Increase map size
 const TILE_COUNT_Y = 100; // Increase map size
@@ -1001,7 +1001,7 @@ setInterval(() => {
                         if (ai.isDead || ai.spawnSafeTimer > 0) continue;
                         
                         // Head to Head AI
-                        if (ai.snake[0].x === head.x && ai.snake[0].y === head.y) {
+                        if (Math.abs(ai.snake[0].x - head.x) < 0.5 && Math.abs(ai.snake[0].y - head.y) < 0.5) {
                             if (p.score < ai.score) {
                                 collision = true;
                             } else if (p.score > ai.score) {
@@ -1013,7 +1013,9 @@ setInterval(() => {
                             break;
                         }
 
-                        if (ai.snake.some(s => s.x === head.x && s.y === head.y)) {
+                        // Use a slightly forgiving hitbox (0.8 instead of exact match)
+                        // This prevents dying when just "grazing" a corner
+                        if (ai.snake.some(s => Math.abs(s.x - head.x) < 0.8 && Math.abs(s.y - head.y) < 0.8)) {
                             collision = true;
                             break;
                         }
